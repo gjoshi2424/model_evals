@@ -1,0 +1,163 @@
+"""
+Utility functions for TravelPlanner evaluation.
+
+Copied and adapted from the original TravelPlanner repository:
+- get_valid_name_city: utils/func.py
+- extract_before_parenthesis: utils/func.py
+- count_consecutive_values: utils/func.py
+- extract_from_to: evaluation/commonsense_constraint.py
+- transportation_match: evaluation/commonsense_constraint.py
+- is_valid_city_sequence: evaluation/commonsense_constraint.py
+"""
+
+import json
+import re
+from typing import Any
+
+# ---------------------------------------------------------------------------
+# String / data extraction helpers
+# ---------------------------------------------------------------------------
+
+
+def extract_before_parenthesis(s: str) -> str:
+    """Extract the portion of a string before any parenthetical expression.
+
+    Example: "Chicago (IL)" → "Chicago "
+    Copied verbatim from utils/func.py.
+    """
+    match = re.search(r"^(.*?)\([^)]*\)", s)
+    return match.group(1) if match else s
+
+
+def get_valid_name_city(info: str) -> tuple[str, str]:
+    """Parse 'Name, City(State)' style strings into (name, city) tuples.
+
+    Returns ("-", "-") if parsing fails.
+    Copied verbatim from utils/func.py.
+    """
+    pattern = r"(.*?),\s*([^,]+)(\(\w[\w\s]*\))?$"
+    match = re.search(pattern, info)
+    if match:
+        return match.group(1).strip(), extract_before_parenthesis(
+            match.group(2).strip()
+        ).strip()
+    else:
+        print(f"{info} can not be parsed, '-' will be used instead.")
+        return "-", "-"
+
+
+def count_consecutive_values(lst: list) -> list[tuple]:
+    """Group consecutive identical values in a list.
+
+    Example: ["A","A","B","A"] → [("A",2),("B",1),("A",1)]
+    Copied verbatim from utils/func.py.
+    """
+    if not lst:
+        return []
+
+    result = []
+    current_string = lst[0]
+    count = 1
+
+    for i in range(1, len(lst)):
+        if lst[i] == current_string:
+            count += 1
+        else:
+            result.append((current_string, count))
+            current_string = lst[i]
+            count = 1
+
+    result.append((current_string, count))
+    return result
+
+
+def extract_from_to(text: str) -> tuple[str | None, str | None]:
+    """Extract origin and destination from 'from A to B' style strings.
+
+    Returns (None, None) if no match is found.
+    Copied verbatim from evaluation/commonsense_constraint.py.
+    """
+    pattern = r"from\s+(.+?)\s+to\s+([^,]+)(?=[,\s]|$)"
+    matches = re.search(pattern, text)
+    return matches.groups() if matches else (None, None)
+
+
+def transportation_match(text: str) -> str | None:
+    """Classify a transportation description string into a canonical mode.
+
+    Returns 'Taxi', 'Self-driving', or 'Flight'.
+    Copied verbatim from evaluation/commonsense_constraint.py.
+    """
+    if "taxi" in text.lower():
+        return "Taxi"
+    elif "self-driving" in text.lower():
+        return "Self-driving"
+    elif "flight" in text.lower():
+        return "Flight"
+    return None
+
+
+def is_valid_city_sequence(city_list: list[str]) -> bool:
+    """Check that a city visit sequence is valid.
+
+    A valid sequence has every intermediate city appearing consecutively
+    (at least twice), and no city reappears once its consecutive block ends.
+    The first and last city (origin) are exempt from this constraint.
+    Copied verbatim from evaluation/commonsense_constraint.py.
+    """
+    min_cities = 3  # origin + at least one destination + return to origin
+    if len(city_list) < min_cities:
+        return False
+
+    visited_cities: set[str] = set()
+    i = 0
+    while i < len(city_list):
+        city = city_list[i]
+
+        if city in visited_cities and (i != 0 and i != len(city_list) - 1):
+            return False
+
+        count = 0
+        while i < len(city_list) and city_list[i] == city:
+            count += 1
+            i += 1
+
+        if count == 1 and 0 < i - 1 < len(city_list) - 1:
+            return False
+
+        visited_cities.add(city)
+
+    return True
+
+
+# ---------------------------------------------------------------------------
+# JSON plan parsing helpers
+# ---------------------------------------------------------------------------
+
+
+def parse_json_plan(raw: str) -> list[dict[str, Any]] | None:
+    """Extract and parse a JSON plan from LLM output.
+
+    The LLM is instructed to wrap the JSON in ```json ... ```.
+    Falls back to a bare eval() on the raw string if that fails.
+    Returns None if all parsing attempts fail.
+    """
+    # Try ```json ... ``` code block first (standard GPT-4 format)
+    try:
+        json_str = raw.split("```json")[1].split("```")[0].strip()
+        return json.loads(json_str)
+    except (IndexError, json.JSONDecodeError):
+        pass
+
+    # Try bare ``` ... ``` code block
+    try:
+        json_str = raw.split("```")[1].split("```")[0].strip()
+        return json.loads(json_str)
+    except (IndexError, json.JSONDecodeError):
+        pass
+
+    # Last resort: eval (the original code uses eval() on the parsed block)
+    try:
+        return eval(raw.strip())  # noqa: S307
+    except Exception:
+        return None

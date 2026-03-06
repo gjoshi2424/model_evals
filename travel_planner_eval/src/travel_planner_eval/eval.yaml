@@ -1,0 +1,14 @@
+title: "TravelPlanner: A Benchmark for Real-World Planning with Language Agents"
+description: |
+  Evaluates LLMs on complex multi-day travel planning tasks. The model receives
+  pre-collected reference information (flights, hotels, restaurants, attractions)
+  and must produce a complete itinerary satisfying commonsense and hard constraints
+  such as city routing, diverse meals, budget limits, and accommodation preferences.
+arxiv: https://arxiv.org/abs/2402.01622
+group: Reasoning
+contributors:
+  - "TODO"
+version: "1-A"
+tasks:
+  - name: travel_planner_direct
+    dataset_samples: 180

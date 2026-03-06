@@ -1,0 +1,226 @@
+"""
+Scorer for TravelPlanner sole-planning evaluation.
+
+Scoring follows the original two-step process from the TravelPlanner paper:
+  1. Parse the model's natural-language plan into JSON using an LLM
+     (replicating postprocess/parsing.py + openai_request.py).
+  2. Evaluate the JSON plan against commonsense and hard constraints
+     (replicating evaluation/eval.py).
+
+The final score is 1 (CORRECT) if all available constraint checks pass,
+0 (INCORRECT) otherwise. Per-constraint results are stored in Score.metadata
+for detailed analysis.
+"""
+
+import logging
+from typing import Any
+
+from inspect_ai.model import ChatMessageSystem, ChatMessageUser, get_model
+from inspect_ai.scorer import (
+    CORRECT,
+    INCORRECT,
+    Score,
+    Scorer,
+    Target,
+    accuracy,
+    scorer,
+    stderr,
+)
+from inspect_ai.solver import TaskState
+
+from travel_planner_eval.constraints import commonsense, hard
+from travel_planner_eval.prompts import FORMAT_CONVERSION_PREFIX
+from travel_planner_eval.utils import parse_json_plan
+
+logger = logging.getLogger(__name__)
+
+
+class ScoreExplanation:
+    """Human-readable labels for score outcomes."""
+
+    EMPTY_PLAN = "Model produced an empty or whitespace-only plan"
+    PARSE_FAILED = "LLM-based plan parsing failed; could not extract JSON"
+    CONSTRAINT_FAIL = "One or more constraint checks failed"
+    ALL_PASS = "All available constraint checks passed"
+
+
+@scorer(metrics=[accuracy(), stderr()])
+def travel_planner_scorer(
+    parse_model: str | None = None,
+) -> Scorer:
+    """Score a TravelPlanner sole-planning sample.
+
+    Step 1 — Parse: Uses an LLM to convert the natural-language plan output
+    into a structured JSON list of daily itineraries, using the same prompt
+    from the original postprocess/openai_request.py.
+
+    Step 2 — Evaluate: Runs commonsense and hard constraint checks on the
+    parsed JSON, following evaluation/eval.py.
+
+    Args:
+        parse_model: Model to use for the JSON parsing step. If None, uses
+            the same model that generated the plan (the task model).
+            The original paper used gpt-4-1106-preview for this step.
+
+    Returns:
+        Scorer function that produces a binary Score (CORRECT / INCORRECT)
+        with per-constraint details in Score.metadata.
+    """
+
+    async def score(state: TaskState, target: Target) -> Score:
+        plan_text: str = state.output.completion.strip()
+
+        # ------------------------------------------------------------------
+        # Delivery check: did the model produce any plan at all?
+        # ------------------------------------------------------------------
+        if not plan_text:
+            logger.warning(f"Sample {state.sample_id}: empty plan output")
+            return Score(
+                value=INCORRECT,
+                answer=plan_text,
+                explanation=ScoreExplanation.EMPTY_PLAN,
+                metadata={"delivered": False},
+            )
+
+        # ------------------------------------------------------------------
+        # Step 1: Parse natural-language plan → structured JSON
+        # Uses an LLM with the same prompt as the original postprocess step.
+        # (postprocess/openai_request.py :: build_plan_format_conversion_prompt)
+        # ------------------------------------------------------------------
+        parsing_prompt = FORMAT_CONVERSION_PREFIX + f"Text:\n{plan_text}\nJSON:\n"
+
+        # Original postprocess/openai_request.py passes a system message
+        # "You are a helpful assistant." via prompt_chatgpt().
+        model = get_model(parse_model)
+        parse_response = await model.generate(
+            input=[
+                ChatMessageSystem(content="You are a helpful assistant."),
+                ChatMessageUser(content=parsing_prompt),
+            ]
+        )
+        parse_output = parse_response.completion.strip()
+
+        parsed_plan: list[dict[str, Any]] | None = parse_json_plan(parse_output)
+
+        if parsed_plan is None:
+            logger.warning(
+                f"Sample {state.sample_id}: JSON parsing failed. "
+                f"Parser output: {parse_output[:200]}"
+            )
+            return Score(
+                value=INCORRECT,
+                answer=plan_text,
+                explanation=ScoreExplanation.PARSE_FAILED,
+                metadata={
+                    "delivered": True,
+                    "parse_failed": True,
+                    "parser_output": parse_output[:500],
+                },
+            )
+
+        # ------------------------------------------------------------------
+        # Step 2: Evaluate constraints
+        # Follows evaluation/eval.py: commonsense first, then hard constraints
+        # (hard constraints are only evaluated if the plan is not absent).
+        # ------------------------------------------------------------------
+        query_data: dict[str, Any] = state.metadata
+
+        commonsense_results = commonsense.evaluation(query_data, parsed_plan)
+
+        # Gate: only run hard constraints if completeness and sandbox checks pass.
+        # Matches original eval.py: hard_eval only runs if
+        # is_not_absent[0] and is_valid_information_in_sandbox[0].
+        not_absent_pass = commonsense_results["is_not_absent"][0]
+        sandbox_pass = commonsense_results["is_valid_information_in_sandbox"][0]
+        if not_absent_pass and sandbox_pass:
+            hard_results = hard.evaluation(query_data, parsed_plan)
+        else:
+            hard_results = None
+
+        # ------------------------------------------------------------------
+        # Determine final pass/fail
+        # A plan passes if ALL commonsense checks pass AND ALL hard checks pass.
+        # (None values mean the constraint was not applicable — treated as passing.)
+        # ------------------------------------------------------------------
+        commonsense_pass = _all_pass(commonsense_results)
+        hard_pass = _all_pass(hard_results) if hard_results is not None else True
+
+        final_pass = commonsense_pass and hard_pass
+
+        # Build flat metadata for Score
+        constraint_metadata: dict[str, Any] = {
+            "delivered": True,
+            "parse_failed": False,
+            "commonsense_pass": commonsense_pass,
+            "hard_pass": hard_pass,
+            "final_pass": final_pass,
+        }
+
+        # Store per-check result: True/False/None and failure reason
+        for check_name, (result, reason) in commonsense_results.items():
+            constraint_metadata[f"commonsense_{check_name}"] = result
+            if reason:
+                constraint_metadata[f"commonsense_{check_name}_reason"] = reason
+
+        if hard_results is not None:
+            for check_name, (result, reason) in hard_results.items():
+                constraint_metadata[f"hard_{check_name}"] = result
+                if reason:
+                    constraint_metadata[f"hard_{check_name}_reason"] = reason
+
+        explanation = (
+            ScoreExplanation.ALL_PASS
+            if final_pass
+            else _build_failure_explanation(commonsense_results, hard_results)
+        )
+
+        return Score(
+            value=CORRECT if final_pass else INCORRECT,
+            answer=plan_text,
+            explanation=explanation,
+            metadata=constraint_metadata,
+        )
+
+    return score
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _all_pass(results: dict[str, tuple] | None) -> bool:
+    """Return True if every check in results passed (True) or was N/A (None).
+
+    A check result of False means it failed. None means it was not applicable
+    (e.g. no transportation constraint was set by the user), which counts as
+    passing (matching original eval.py behaviour).
+    """
+    if results is None:
+        return True
+    return all(result is not False for result, _ in results.values())
+
+
+def _build_failure_explanation(
+    commonsense_results: dict[str, tuple],
+    hard_results: dict[str, tuple] | None,
+) -> str:
+    """Build a human-readable explanation of which constraints failed."""
+    failures: list[str] = []
+
+    for check_name, (result, reason) in commonsense_results.items():
+        if result is False:
+            msg = f"[commonsense] {check_name}"
+            if reason:
+                msg += f": {reason}"
+            failures.append(msg)
+
+    if hard_results:
+        for check_name, (result, reason) in hard_results.items():
+            if result is False:
+                msg = f"[hard] {check_name}"
+                if reason:
+                    msg += f": {reason}"
+                failures.append(msg)
+
+    return ScoreExplanation.CONSTRAINT_FAIL + " — " + "; ".join(failures)
