@@ -11,8 +11,7 @@ Based on the paper: [TravelPlanner: A Benchmark for Real-World Planning with Lan
 ## Usage
 
 ```bash
-# From the model_evals/ directory:
-uv run inspect eval travel_planner_eval --model openai/gpt-4o --limit 10
+uv run inspect eval src/ --model openai/gpt-3.5-turbo-1106
 ```
 
 From Python:
@@ -84,6 +83,11 @@ uv run inspect eval travel_planner_eval \
 | Model | Provider | Split | Commonsense Macro Pass Rate | Stderr | Samples |
 | ----- | -------- | ----- | -------- | ------ | ------- |
 | gpt-3.5-turbo-1106 | OpenAI | validation | 0.050 | 0.050 | 20 |
+
+**Replication Steps**
+```python
+uv run inspect eval src/ --model openai/gpt-3.5-turbo-1106 --limit 1 -T split=validation
+```
 
 ## References
 
