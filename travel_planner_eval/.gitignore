@@ -1,4 +1,6 @@
 __pycache__/
 .venv/
 *.pyc
-src/travel_planner_eval/database/
+src/database/
+*.egg-info/
+logs/
