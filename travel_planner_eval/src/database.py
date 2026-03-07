@@ -4,23 +4,17 @@ Lazy-loading wrappers for the TravelPlanner static database files.
 Each public function returns a pandas DataFrame (or dict for city/state lookup)
 loaded from the bundled CSV / text files in the database/ subdirectory.
 All results are cached after the first call to avoid repeated disk I/O.
-
-The bundled data comes from the original TravelPlanner repository:
-  https://github.com/OSU-NLP-Group/TravelPlanner
 """
 
 import functools
-import re
 from pathlib import Path
 
 import pandas as pd
+from utils import extract_before_parenthesis, extract_from_to, get_valid_name_city
+import math as _math
+
 
 _DB_DIR: Path = Path(__file__).parent / "database"
-
-
-# ---------------------------------------------------------------------------
-# Lazy-loaded DataFrames
-# ---------------------------------------------------------------------------
 
 
 @functools.lru_cache(maxsize=1)
@@ -104,10 +98,6 @@ def distance_matrix() -> pd.DataFrame:
     return pd.read_csv(_DB_DIR / "googleDistanceMatrix" / "distance.csv")
 
 
-# ---------------------------------------------------------------------------
-# Derived helpers
-# ---------------------------------------------------------------------------
-
 
 @functools.lru_cache(maxsize=1)
 def city_state_map() -> dict[str, str]:
@@ -128,12 +118,17 @@ def city_state_map() -> dict[str, str]:
     }
 
 
-def distance_cost(org_city: str, dest_city: str, mode: str) -> float | None:
+def distance_cost(org_city: str, dest_city: str, mode: str) -> int | None:
     """Look up the driving/taxi cost between two cities using the distance matrix.
 
-    Returns None if the pair is not found, or if the duration includes 'day'.
-    Replicates googleDistanceMatrix.run_for_evaluation() from tools/googleDistanceMatrix/apis.py.
+    Returns None if the pair is not found, or if either city/distance/duration
+    is invalid. Strips parenthetical state suffixes from city names (e.g.
+    "Phoenix(AZ)" → "Phoenix") before lookup, matching the behaviour of
+    googleDistanceMatrix.run_for_evaluation() from tools/googleDistanceMatrix/apis.py.
     """
+    org_city = extract_before_parenthesis(org_city)
+    dest_city = extract_before_parenthesis(dest_city)
+
     df = distance_matrix()
     response = df[(df["origin"] == org_city) & (df["destination"] == dest_city)]
     if len(response) == 0:
@@ -144,12 +139,105 @@ def distance_cost(org_city: str, dest_city: str, mode: str) -> float | None:
     duration = row.get("duration")
     if dist_str is None or pd.isna(dist_str):
         return None
-    if duration is not None and "day" in str(duration):
+    if duration is None or pd.isna(duration):
+        return None
+    if "day" in str(duration):
         return None
 
-    km = float(re.sub(r"[^\d.]", "", str(dist_str).replace(",", "")))
+    km = float(str(dist_str).replace("km", "").replace(",", ""))
     if mode == "self-driving":
-        return km * 0.05
+        return int(km * 0.05)
     elif mode == "taxi":
-        return km * 1.0
+        return int(km)
     return None
+
+
+def cost_enquiry(plan: dict) -> str:
+    """Calculate the cost of a one-day sub-plan.
+
+    Mirrors ReactEnv.run() / ReactReflectEnv.run() from tools/planner/env.py.
+    Accepts the JSON dict produced by a CostEnquiry action (keys: people_number,
+    transportation, breakfast, lunch, dinner, accommodation, current_city) and
+    returns a human-readable cost string or an error message.
+
+    Args:
+        plan: One-day plan dict as described in REACT_PLANNER_INSTRUCTION.
+
+    Returns:
+        String of the form "The cost of your plan is N dollars." on success,
+        or an error string listing reasons the cost could not be computed.
+    """
+    total_cost = 0.0
+    errors: list[str] = []
+    people = int(plan.get("people_number", 1))
+
+    # --- Transportation ---
+    transport = plan.get("transportation", "-") or "-"
+    if transport != "-":
+        org_city, dest_city = extract_from_to(transport)
+        if org_city is None or dest_city is None:
+            org_city, dest_city = extract_from_to(plan.get("current_city", ""))
+
+        if org_city is None or dest_city is None:
+            errors.append("The transportation information is not valid, please check.")
+        else:
+            if "flight number" in transport.lower():
+                try:
+                    flight_number = transport.split("Flight Number: ")[1].split(",")[0].strip()
+                    df = flights()
+                    res = df[df["Flight Number"] == flight_number]
+                    if len(res) > 0:
+                        total_cost += float(res["Price"].values[0]) * people
+                    else:
+                        errors.append("The flight information is not valid")
+                except Exception:
+                    errors.append("The flight information is not valid")
+            elif "self-driving" in transport.lower() or "taxi" in transport.lower():
+                mode = "self-driving" if "self-driving" in transport.lower() else "taxi"
+                cost = distance_cost(org_city, dest_city, mode)
+                if cost is None:
+                    errors.append("The transportation information is not valid, please check.")
+                elif mode == "self-driving":
+                    total_cost += cost * _math.ceil(people / 5)
+                else:
+                    total_cost += cost * _math.ceil(people / 4)
+
+    def _add_restaurant_cost(meal_field: str, label: str) -> None:
+        value = plan.get(meal_field, "-") or "-"
+        if value == "-":
+            return
+
+        name, city = get_valid_name_city(value)
+        if name == "-" or city == "-":
+            return
+        df = restaurants()
+        res = df[(df["Name"] == name) & (df["City"] == city)]
+        if len(res) > 0:
+            nonlocal total_cost
+            total_cost += float(res["Average Cost"].values[0]) * people
+        else:
+            errors.append(f"The {label} information is not valid, please check.")
+
+    _add_restaurant_cost("breakfast", "breakfast")
+    _add_restaurant_cost("lunch", "lunch")
+    _add_restaurant_cost("dinner", "dinner")
+
+    # --- Accommodation ---
+    accommodation = plan.get("accommodation", "-") or "-"
+    if accommodation != "-":
+        name, city = get_valid_name_city(accommodation)
+        if name != "-" and city != "-":
+            df = accommodations()
+            res = df[(df["NAME"] == name) & (df["city"] == city)]
+            if len(res) > 0:
+                max_occ = int(res["maximum occupancy"].values[0])
+                total_cost += float(res["price"].values[0]) * _math.ceil(people / max_occ)
+            else:
+                errors.append("The accommodation information is not valid, please check.")
+
+    if not errors:
+        return f"The cost of your plan is {total_cost} dollars."
+    msg = "Sorry, the cost of your plan is not available because of the following reasons:"
+    for idx, info in enumerate(errors, 1):
+        msg += f"{idx}. {info} \t"
+    return msg

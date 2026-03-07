@@ -1,17 +1,3 @@
-"""
-Scorer for TravelPlanner sole-planning evaluation.
-
-Scoring follows the original two-step process from the TravelPlanner paper:
-  1. Parse the model's natural-language plan into JSON using an LLM
-     (replicating postprocess/parsing.py + openai_request.py).
-  2. Evaluate the JSON plan against commonsense and hard constraints
-     (replicating evaluation/eval.py).
-
-The final score is 1 (CORRECT) if all available constraint checks pass,
-0 (INCORRECT) otherwise. Per-constraint results are stored in Score.metadata
-for detailed analysis.
-"""
-
 import logging
 from typing import Any
 
@@ -28,9 +14,9 @@ from inspect_ai.scorer import (
 )
 from inspect_ai.solver import TaskState
 
-from travel_planner_eval.constraints import commonsense, hard
-from travel_planner_eval.prompts import FORMAT_CONVERSION_PREFIX
-from travel_planner_eval.utils import parse_json_plan
+from constraints import commonsense, hard
+from prompts import FORMAT_CONVERSION_PREFIX
+from utils import parse_json_plan
 
 logger = logging.getLogger(__name__)
 
@@ -49,14 +35,6 @@ def travel_planner_scorer(
     parse_model: str | None = None,
 ) -> Scorer:
     """Score a TravelPlanner sole-planning sample.
-
-    Step 1 — Parse: Uses an LLM to convert the natural-language plan output
-    into a structured JSON list of daily itineraries, using the same prompt
-    from the original postprocess/openai_request.py.
-
-    Step 2 — Evaluate: Runs commonsense and hard constraint checks on the
-    parsed JSON, following evaluation/eval.py.
-
     Args:
         parse_model: Model to use for the JSON parsing step. If None, uses
             the same model that generated the plan (the task model).

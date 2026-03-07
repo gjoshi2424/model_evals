@@ -10,8 +10,8 @@ import math
 import re
 from typing import Any
 
-from travel_planner_eval import database
-from travel_planner_eval.utils import (
+import database
+from utils import (
     extract_before_parenthesis,
     extract_from_to,
     get_valid_name_city,

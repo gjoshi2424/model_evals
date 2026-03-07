@@ -8,6 +8,7 @@ dependencies = [
     "pandas >= 2.0",
     "datasets >= 2.0",
     "openai",
+    "google-genai>=1.66.0",
 ]
 
 [project.entry-points.inspect_ai]
