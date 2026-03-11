@@ -20,7 +20,7 @@ import json
 import logging
 
 from inspect_ai.agent import Agent, AgentPrompt, AgentState, react, run
-from inspect_ai.model import ChatMessageUser, get_model
+from inspect_ai.model import ChatMessageTool, ChatMessageUser, get_model
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.tool import Tool, tool
 
@@ -185,18 +185,26 @@ def sole_planning_reflexion() -> Solver:
             agent_state = await run(agent, user_input)
             state.output = agent_state.output
 
-            # If the agent submitted a plan (output has content), we're done.
-            # A halted/empty-output agent will have a short or empty completion.
-            plan = state.output.completion.strip()
-            if plan:
+            # Check whether the agent actually called submit() successfully.
+            # Checking output.completion is unreliable: a halted agent synthesises
+            # its output from the last assistant message, which may be non-empty.
+            submitted = any(
+                isinstance(m, ChatMessageTool)
+                and m.function == "submit"
+                and m.error is None
+                for m in agent_state.messages
+            )
+            if submitted:
                 logger.debug(
-                    f"Sample {state.sample_id}: Reflexion finished on attempt {retry + 1}."
+                    "Sample %s: Reflexion finished on attempt %d.",
+                    state.sample_id,
+                    retry + 1,
                 )
                 return state
 
             # --- Reflexion step: ask the model to diagnose the failure ---
             history = "\n".join(
-                str(m.content) for m in agent_state.messages if hasattr(m, "content")
+                m.text for m in agent_state.messages
             )
             reflect_prompt = REFLECT_INSTRUCTION.format(
                 text=text,
@@ -209,8 +217,11 @@ def sole_planning_reflexion() -> Solver:
             reflection_text = reflection_output.completion.strip()
             reflections.append(reflection_text)
             logger.info(
-                f"Sample {state.sample_id}: Reflexion retry {retry + 1}/"
-                f"{_REFLEXION_MAX_RETRIES}. Reflection: {reflection_text[:100]}"
+                "Sample %s: Reflexion retry %d/%d. Reflection: %s",
+                state.sample_id,
+                retry + 1,
+                _REFLEXION_MAX_RETRIES,
+                reflection_text[:100],
             )
 
         return state
