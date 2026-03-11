@@ -1,12 +1,3 @@
-"""
-Commonsense constraint evaluation for TravelPlanner.
-
-Ported from the original TravelPlanner repository (evaluation/commonsense_constraint.py).
-
-All checks from the original are implemented, including those that require the bundled
-travel database CSV files.
-"""
-
 import re
 from typing import Any
 
@@ -21,12 +12,7 @@ from utils import (
 )
 
 # Days threshold above which cities must belong to the destination state (original uses 3)
-_MIN_DAYS_FOR_STATE_CHECK = 3
-
-# ---------------------------------------------------------------------------
-# Individual constraint checks
-# Copied / adapted from evaluation/commonsense_constraint.py
-# ---------------------------------------------------------------------------
+MIN_DAYS_FOR_STATE_CHECK = 3
 
 
 def is_reasonable_visiting_city(
@@ -40,7 +26,13 @@ def is_reasonable_visiting_city(
     - City sequence has no invalid back-and-forth patterns
     - All cities are valid and within the destination state (for trips > 3 days)
 
-    Adapted from evaluation/commonsense_constraint.py.
+    Args:
+        question: Query metadata dict with fields: org, dest, days.
+        tested_data: List of per-day plan dicts with key: current_city.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes) or False (fails),
+        and reason is a human-readable failure message or None.
     """
     city_list = []
 
@@ -69,7 +61,7 @@ def is_reasonable_visiting_city(
             return False, f"{city} is not a valid city."
         if (
             idx not in [0, len(city_list) - 1]
-            and question["days"] > _MIN_DAYS_FOR_STATE_CHECK
+            and question["days"] > MIN_DAYS_FOR_STATE_CHECK
             and city_state[city] != question["dest"]
         ):
             return False, f"{city} is not in {question['dest']}."
@@ -82,7 +74,13 @@ def is_valid_restaurants(
 ) -> tuple[bool, str | None]:
     """Check that no restaurant is visited more than once across the trip.
 
-    Copied verbatim from evaluation/commonsense_constraint.py.
+    Args:
+        question: Query metadata dict (unused, included for uniform interface).
+        tested_data: List of per-day plan dicts with keys: breakfast, lunch, dinner.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes) or False (fails),
+        and reason is a human-readable failure message or None.
     """
     restaurants_list: list[str] = []
 
@@ -118,7 +116,13 @@ def is_valid_attractions(
 ) -> tuple[bool, str | None]:
     """Check that no attraction is visited more than once across the trip.
 
-    Copied verbatim from evaluation/commonsense_constraint.py.
+    Args:
+        question: Query metadata dict (unused, included for uniform interface).
+        tested_data: List of per-day plan dicts with key: attraction.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes) or False (fails),
+        and reason is a human-readable failure message or None.
     """
     attractions_list: list[str] = []
 
@@ -143,7 +147,13 @@ def is_valid_transportation(
 ) -> tuple[bool, str | None]:
     """Check that no conflicting transportation modes are used (e.g. flight + self-driving).
 
-    Copied verbatim from evaluation/commonsense_constraint.py.
+    Args:
+        question: Query metadata dict with field: days.
+        tested_data: List of per-day plan dicts with key: transportation.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes) or False (fails),
+        and reason is a human-readable failure message or None.
     """
     if tested_data[0]["transportation"] and tested_data[0]["transportation"] != "-":
         transportation_list = [transportation_match(tested_data[0]["transportation"])]
@@ -173,10 +183,14 @@ def is_valid_information_in_current_city(
 ) -> tuple[bool, str | None]:
     """Check that each day's meals, attractions, and accommodation match the current city.
 
-    Ensures each day entry's meals, attractions, and accommodation refer to a city
-    consistent with the day's current city.
+    Args:
+        question: Query metadata dict with field: days.
+        tested_data: List of per-day plan dicts with keys: current_city, transportation,
+            breakfast, lunch, dinner, attraction, accommodation.
 
-    Copied verbatim from evaluation/commonsense_constraint.py.
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes) or False (fails),
+        and reason is a human-readable failure message or None.
     """
     for i in range(min(question["days"], len(tested_data))):
         unit = tested_data[i]
@@ -250,10 +264,14 @@ def is_valid_information_in_sandbox(
 ) -> tuple[bool, str | None]:
     """Check that all named entities in the plan exist in the database.
 
-    Verifies flight numbers, restaurants, attractions, and accommodations against
-    the bundled database. Known as the "sandbox" validation because it checks
-    grounding against the set of valid entities available to the solver.
-    Copied verbatim from evaluation/commonsense_constraint.py.
+    Args:
+        question: Query metadata dict with field: days.
+        tested_data: List of per-day plan dicts with keys: transportation, current_city,
+            breakfast, lunch, dinner, attraction, accommodation.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes) or False (fails),
+        and reason is a human-readable failure message or None.
     """
     for i in range(min(question["days"], len(tested_data))):
         unit = tested_data[i]
@@ -393,6 +411,14 @@ def is_valid_accommodaton(
     """Check that each accommodation meets the minimum nights requirement.
 
     Copied verbatim from evaluation/commonsense_constraint.py.
+
+    Args:
+        question: Query metadata dict with field: days.
+        tested_data: List of per-day plan dicts with key: accommodation.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes) or False (fails),
+        and reason is a human-readable failure message or None.
     """
     data = []
     for i in range(min(question["days"], len(tested_data))):
@@ -425,6 +451,14 @@ def is_valid_visiting_city_number(
     """Check that the correct number of destination cities are visited.
 
     Copied verbatim from evaluation/commonsense_constraint.py.
+
+    Args:
+        question: Query metadata dict with fields: org, days, visiting_city_number.
+        tested_data: List of per-day plan dicts with key: current_city.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes) or False (fails),
+        and reason is a human-readable failure message or None.
     """
     city_set: set[str] = set()
 
@@ -458,7 +492,13 @@ def is_valid_days(
 ) -> tuple[bool, str | None]:
     """Check that the plan covers exactly the required number of days.
 
-    Copied verbatim from evaluation/commonsense_constraint.py.
+    Args:
+        question: Query metadata dict with field: days.
+        tested_data: List of per-day plan dicts with key: current_city.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes) or False (fails),
+        and reason is a human-readable failure message or None.
     """
     lens = 0
     for i in range(min(question["days"], len(tested_data))):
@@ -482,6 +522,15 @@ def is_not_absent(
     Verifies all required keys are present and that at least 50% of fields
     are filled in. Also validates day count and visiting city count.
     Copied verbatim from evaluation/commonsense_constraint.py.
+
+    Args:
+        question: Query metadata dict with fields: days, org, visiting_city_number.
+        tested_data: List of per-day plan dicts with keys: current_city, transportation,
+            breakfast, lunch, dinner, attraction, accommodation.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes) or False (fails),
+        and reason is a human-readable failure message or None.
     """
     needed_info = 6 * question["days"]
     total_valid_info = 0
@@ -532,17 +581,11 @@ def is_not_absent(
             if unit[key] and unit[key] != "-":
                 total_valid_info += 1
 
-    # 50% completeness threshold (copied verbatim from original)
     min_completeness_ratio = 0.5
     if total_valid_info * 1.0 / needed_info < min_completeness_ratio:
         return False, "The absent information is more than 50%."
 
     return True, None
-
-
-# ---------------------------------------------------------------------------
-# Aggregate evaluation entry point
-# ---------------------------------------------------------------------------
 
 
 def evaluation(
@@ -552,6 +595,16 @@ def evaluation(
 
     Returns a dict mapping check name → (bool | None, reason | None).
     Adapted from evaluation/commonsense_constraint.py :: evaluation().
+
+    Args:
+        query_data: Query metadata dict with fields: org, dest, days,
+            visiting_city_number, people_number, budget, local_constraint.
+        tested_data: List of per-day plan dicts with keys: current_city,
+            transportation, breakfast, lunch, dinner, attraction, accommodation.
+
+    Returns:
+        Dict mapping check name to ``(result, reason)`` tuples. result is True
+        (passes), False (fails), or None (not applicable).
     """
     return_info: dict[str, tuple] = {}
     return_info["is_reasonable_visiting_city"] = is_reasonable_visiting_city(

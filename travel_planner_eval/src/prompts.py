@@ -1,20 +1,3 @@
-"""
-Prompts for TravelPlanner evaluation.
-
-Copied directly from the original TravelPlanner repository (agents/prompts.py):
-- PLANNER_INSTRUCTION: direct planning mode
-- COT_PLANNER_INSTRUCTION: chain-of-thought mode
-- REACT_PLANNER_INSTRUCTION: ReAct (Thought/Action/Observation) mode
-- REFLECTION_HEADER: prepended to prompts during Reflexion retries
-- REFLECT_INSTRUCTION: self-reflection prompt used after ReAct halt
-- REACT_REFLECT_PLANNER_INSTRUCTION: ReAct mode with reflection context
-- FORMAT_CONVERSION_PREFIX: postprocess/openai_request.py (build_plan_format_conversion_prompt)
-"""
-
-# ---------------------------------------------------------------------------
-# Sole-planning prompt (direct strategy)
-# Copied verbatim from agents/prompts.py :: PLANNER_INSTRUCTION
-# ---------------------------------------------------------------------------
 
 PLANNER_INSTRUCTION = """You are a proficient planner. Based on the provided information and query, please give me a detailed plan, including specifics such as flight numbers (e.g., F0123456), restaurant names, and accommodation names. Note that all the information in your plan should be derived from the provided data. You must adhere to the format given in the example. Additionally, all details should align with commonsense. The symbol '-' indicates that information is unnecessary. For example, in the provided sample, you do not need to plan after returning to the departure city. When you travel to two cities in one day, you should note it in the 'Current City' section as in the example (i.e., from A to B).
 
@@ -55,14 +38,6 @@ Query: {query}
 Travel Plan:"""
 
 
-# ---------------------------------------------------------------------------
-# System prompt for the Inspect react() agent (ReAct / Reflexion strategies).
-# Unlike REACT_PLANNER_INSTRUCTION, this has no {text}/{query}/{scratchpad}
-# placeholders — those are supplied as the user message via run().
-# The model uses the `cost_enquiry` tool (real function call) instead of the
-# bracket-syntax CostEnquiry[...] action, and calls `submit(plan)` to finish.
-# ---------------------------------------------------------------------------
-
 REACT_AGENT_SYSTEM_PROMPT = """You are a proficient planner. Based on the provided information and query, please give me a detailed plan, including specifics such as flight numbers (e.g., F0123456), restaurant names, and hotel names. Note that all the information in your plan should be derived from the provided data. You must adhere to the format given in the example. Additionally, all details should align with common sense. Attraction visits and meals are expected to be diverse. The symbol '-' indicates that information is unnecessary. For example, in the provided sample, you do not need to plan after returning to the departure city. When you travel to two cities in one day, you should note it in the 'Current City' section as in the example (i.e., from A to B).
 
 Use the `cost_enquiry` tool to verify the cost of individual day sub-plans as you build up the itinerary. When you have completed the full multi-day travel plan, call the `submit` tool with the complete plan text.
@@ -99,17 +74,9 @@ Accommodation: -
 ***** Example Ends *****"""
 
 # User-message template for react/reflexion strategies.
-# The system prompt (REACT_AGENT_SYSTEM_PROMPT) carries all instructions;
-# this template provides only the data and query as the human turn.
 REACT_USER_TEMPLATE = """Given information: {text}
 Query: {query}
 Travel Plan:"""
-
-
-# ---------------------------------------------------------------------------
-# Chain-of-thought planning prompt
-# Copied verbatim from agents/prompts.py :: COT_PLANNER_INSTRUCTION
-# ---------------------------------------------------------------------------
 
 COT_PLANNER_INSTRUCTION = """You are a proficient planner. Based on the provided information and query, please give me a detailed plan, including specifics such as flight numbers (e.g., F0123456), restaurant names, and hotel names. Note that all the information in your plan should be derived from the provided data. You must adhere to the format given in the example. Additionally, all details should align with common sense. Attraction visits and meals are expected to be diverse. The symbol '-' indicates that information is unnecessary. For example, in the provided sample, you do not need to plan after returning to the departure city. When you travel to two cities in one day, you should note it in the 'Current City' section as in the example (i.e., from A to B). 
 
@@ -150,11 +117,6 @@ Query: {query}
 Travel Plan: Let's think step by step. First, """
 
 
-# ---------------------------------------------------------------------------
-# ReAct planning prompt (Thought / Action / Observation loop)
-# Copied verbatim from agents/prompts.py :: REACT_PLANNER_INSTRUCTION
-# ---------------------------------------------------------------------------
-
 REACT_PLANNER_INSTRUCTION = """You are a proficient planner. Based on the provided information and query, please give me a detailed plan, including specifics such as flight numbers (e.g., F0123456), restaurant names, and hotel names. Note that all the information in your plan should be derived from the provided data. You must adhere to the format given in the example. Additionally, all details should align with common sense. Attraction visits and meals are expected to be diverse. The symbol '-' indicates that information is unnecessary. For example, in the provided sample, you do not need to plan after returning to the departure city. When you travel to two cities in one day, you should note it in the 'Current City' section as in the example (i.e., from A to B). Solve this task by alternating between Thought, Action, and Observation steps. The 'Thought' phase involves reasoning about the current situation. The 'Action' phase can be of two types:
 (1) CostEnquiry[Sub Plan]: This function calculates the cost of a detailed sub plan, which you need to input the people number and plan in JSON format. The sub plan should encompass a complete one-day plan. An example will be provided for reference.
 (2) Finish[Final Plan]: Use this function to indicate the completion of the task. You must submit a final, complete plan as an argument.
@@ -193,12 +155,6 @@ You must use Finish to indict you have finished the task. And each action only c
 Given information: {text}
 Query: {query}{scratchpad} """
 
-
-# ---------------------------------------------------------------------------
-# Reflexion prompts
-# Copied verbatim from agents/prompts.py :: REFLECTION_HEADER / REFLECT_INSTRUCTION
-#                                          / REACT_REFLECT_PLANNER_INSTRUCTION
-# ---------------------------------------------------------------------------
 
 REFLECTION_HEADER = (
     "You have attempted to give a sub plan before and failed. The following "
@@ -255,11 +211,6 @@ You must use Finish to indict you have finished the task. And each action only c
 Given information: {text}
 Query: {query}{scratchpad} """
 
-
-# ---------------------------------------------------------------------------
-# Plan format conversion prompt (for parsing natural-language plan → JSON)
-# Copied verbatim from postprocess/openai_request.py :: build_plan_format_conversion_prompt
-# ---------------------------------------------------------------------------
 
 FORMAT_CONVERSION_PREFIX = """Please assist me in extracting valid information from a given natural language text and reconstructing it in JSON format, as demonstrated in the following example. If transportation details indicate a journey from one city to another (e.g., from A to B), the 'current_city' should be updated to the destination city (in this case, B). Use a ';' to separate different attractions, with each attraction formatted as 'Name, City'. If there's information about transportation, ensure that the 'current_city' aligns with the destination mentioned in the transportation details (i.e., the current city should follow the format 'from A to B'). Also, ensure that all flight numbers and costs are followed by a colon (i.e., 'Flight Number:' and 'Cost:'), consistent with the provided example. Each item should include ['day', 'current_city', 'transportation', 'breakfast', 'attraction', 'lunch', 'dinner', 'accommodation']. Replace non-specific information like 'eat at home/on the road' with '-'. Additionally, delete any '$' symbols.
 -----EXAMPLE-----

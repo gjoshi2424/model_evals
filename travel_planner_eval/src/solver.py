@@ -1,21 +1,3 @@
-"""
-Solvers for TravelPlanner sole-planning strategies.
-
-Four strategies are implemented, mirroring the original TravelPlanner repo:
-
-- **direct**: Single generate call.  Original: Planner.run() in tools/planner/apis.py
-- **cot**: Same as direct but uses the CoT prompt (ends "Let's think step by step. First, ").
-- **react**: Uses inspect_ai.agent.react() with cost_enquiry as a real @tool.
-  The model calls cost_enquiry(plan_json) to verify day costs, then submit(plan) to finish.
-  Original: ReactPlanner.run() in tools/planner/apis.py
-- **reflexion**: Wraps the react agent in a retry loop with a self-reflection step
-  generated between attempts when the agent fails to produce a complete plan.
-  Original: ReactReflectPlanner.run() in tools/planner/apis.py
-
-All four strategies are "sole-planning": the model receives pre-collected reference
-information together with the query and produces a complete travel plan.
-"""
-
 import json
 import logging
 
@@ -34,13 +16,12 @@ from prompts import (
 logger = logging.getLogger(__name__)
 
 # Maximum reflection retries for the Reflexion strategy.
-_REFLEXION_MAX_RETRIES: int = 3
+REFLEXION_MAX_RETRIES: int = 3
 
-# Maximum tool-call steps per agent run, matching self.max_steps = 30 in the
-# original ReactPlanner / ReactReflectPlanner (tools/planner/apis.py).
-_MAX_STEPS: int = 30
+# Maximum tool-call steps per agent run,
+MAX_STEPS: int = 30
 
-_CONTINUE_MESSAGE = "Please proceed to the next step using your best judgement."
+CONTINUE_MESSAGE = "Please proceed to the next step using your best judgement."
 
 
 
@@ -73,18 +54,20 @@ def cost_enquiry_tool() -> Tool:
 def _make_react_agent(system_prompt: str) -> object:
     """Create a react() agent with the given system prompt and cost_enquiry tool.
 
-    Uses AgentPrompt to supply only our instructions, suppressing inspect's
-    default assistant/submit prompt additions. Halts after _MAX_STEPS tool calls,
-    matching self.max_steps = 30 in the original ReactPlanner (tools/planner/apis.py).
+    Args:
+        system_prompt: System-level instructions injected into the agent via AgentPrompt.
+
+    Returns:
+        A configured react() Agent instance with at most MAX_STEPS tool-call iterations.
     """
     steps = 0
 
     async def on_continue(state: AgentState) -> bool | str:
         nonlocal steps
         steps += 1
-        if steps >= _MAX_STEPS:
+        if steps >= MAX_STEPS:
             return False
-        return _CONTINUE_MESSAGE
+        return CONTINUE_MESSAGE
 
     return react(
         prompt=AgentPrompt(
@@ -98,10 +81,6 @@ def _make_react_agent(system_prompt: str) -> object:
 @solver
 def sole_planning_direct() -> Solver:
     """Sole-planning solver using the direct strategy.
-
-    Passes the pre-formatted planner prompt (stored as the sample input)
-    directly to the model and returns the completion as the answer.
-    No system message is used, matching the original single-HumanMessage approach.
 
     Returns:
         Solver that generates a single completion for the planner prompt.
@@ -117,11 +96,6 @@ def sole_planning_direct() -> Solver:
 def sole_planning_cot() -> Solver:
     """Sole-planning solver using the chain-of-thought (CoT) strategy.
 
-    Identical to the direct strategy at inference time: a single generate call.
-    The prompt itself drives the CoT behaviour — it ends with
-    "Let's think step by step. First, " which elicits step-by-step reasoning.
-    The prompt is set at the dataset level via COT_PLANNER_INSTRUCTION.
-
     Returns:
         Solver that generates a single completion for the CoT planner prompt.
     """
@@ -136,14 +110,6 @@ def sole_planning_cot() -> Solver:
 def sole_planning_react() -> Agent:
     """Sole-planning solver using the ReAct strategy via inspect_ai.agent.react().
 
-    Returns an Agent directly (Task accepts Solver | Agent), which inspect_ai
-    runs against the sample input automatically — no manual run() wrapper needed.
-    This matches how cybench and cybergym use react() directly as a solver.
-
-    The model uses inspect's native tool-calling mechanism:
-    - ``cost_enquiry(plan_json)`` — calculates the daily cost from the local database.
-    - ``submit(plan)`` — signals completion; the argument becomes the final answer.
-
     Returns:
         Agent implementing the ReAct planning strategy.
     """
@@ -155,14 +121,6 @@ def sole_planning_react() -> Agent:
 def sole_planning_reflexion() -> Solver:
     """Sole-planning solver using the Reflexion strategy.
 
-    Wraps the react agent in a retry loop. When an attempt ends without a
-    submitted plan, the model is asked to diagnose its failure via
-    REFLECT_INSTRUCTION. The resulting reflection is prepended to the system
-    prompt of the next attempt (matching REACT_REFLECT_PLANNER_INSTRUCTION
-    from the original ReactReflectPlanner in tools/planner/apis.py).
-
-    Up to 3 reflection retries are used (matching max_retry_step = 3).
-
     Returns:
         Solver implementing the Reflexion planning strategy.
     """
@@ -173,7 +131,7 @@ def sole_planning_reflexion() -> Solver:
         user_input = state.input.text
         reflections: list[str] = []
 
-        for retry in range(_REFLEXION_MAX_RETRIES):
+        for retry in range(REFLEXION_MAX_RETRIES):
             # Build system prompt: base instructions + accumulated reflections
             if reflections:
                 reflection_block = REFLECTION_HEADER + "\n".join(reflections)
@@ -186,8 +144,6 @@ def sole_planning_reflexion() -> Solver:
             state.output = agent_state.output
 
             # Check whether the agent actually called submit() successfully.
-            # Checking output.completion is unreliable: a halted agent synthesises
-            # its output from the last assistant message, which may be non-empty.
             submitted = any(
                 isinstance(m, ChatMessageTool)
                 and m.function == "submit"
@@ -202,7 +158,7 @@ def sole_planning_reflexion() -> Solver:
                 )
                 return state
 
-            # --- Reflexion step: ask the model to diagnose the failure ---
+            # Reflexion step: ask the model to diagnose the failure
             history = "\n".join(
                 m.text for m in agent_state.messages
             )
@@ -220,7 +176,7 @@ def sole_planning_reflexion() -> Solver:
                 "Sample %s: Reflexion retry %d/%d. Reflection: %s",
                 state.sample_id,
                 retry + 1,
-                _REFLEXION_MAX_RETRIES,
+                MAX_STEPS,
                 reflection_text[:100],
             )
 

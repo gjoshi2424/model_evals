@@ -1,11 +1,3 @@
-"""
-Lazy-loading wrappers for the TravelPlanner static database files.
-
-Each public function returns a pandas DataFrame (or dict for city/state lookup)
-loaded from the bundled CSV / text files in the database/ subdirectory.
-All results are cached after the first call to avoid repeated disk I/O.
-"""
-
 import functools
 from pathlib import Path
 
@@ -21,9 +13,9 @@ _DB_DIR: Path = Path(__file__).parent / "database"
 def flights() -> pd.DataFrame:
     """Return the flights DataFrame with columns used for evaluation.
 
-    Columns: Flight Number, Price, DepTime, ArrTime, ActualElapsedTime,
-             FlightDate, OriginCityName, DestCityName, Distance.
-    Mirrors the loader in tools/flights/apis.py.
+    Returns:
+        DataFrame with columns: Flight Number, Price, DepTime, ArrTime,
+        ActualElapsedTime, FlightDate, OriginCityName, DestCityName, Distance.
     """
     return pd.read_csv(_DB_DIR / "flights" / "clean_Flights_2022.csv").dropna()[
         [
@@ -44,9 +36,9 @@ def flights() -> pd.DataFrame:
 def accommodations() -> pd.DataFrame:
     """Return the accommodations DataFrame with columns used for evaluation.
 
-    Columns: NAME, price, room type, house_rules, minimum nights,
-             maximum occupancy, review rate number, city.
-    Mirrors the loader in tools/accommodations/apis.py.
+    Returns:
+        DataFrame with columns: NAME, price, room type, house_rules, minimum nights,
+        maximum occupancy, review rate number, city.
     """
     return pd.read_csv(
         _DB_DIR / "accommodations" / "clean_accommodations_2022.csv"
@@ -68,8 +60,8 @@ def accommodations() -> pd.DataFrame:
 def restaurants() -> pd.DataFrame:
     """Return the restaurants DataFrame with columns used for evaluation.
 
-    Columns: Name, Average Cost, Cuisines, Aggregate Rating, City.
-    Mirrors the loader in tools/restaurants/apis.py.
+    Returns:
+        DataFrame with columns: Name, Average Cost, Cuisines, Aggregate Rating, City.
     """
     return pd.read_csv(_DB_DIR / "restaurants" / "clean_restaurant_2022.csv").dropna()[
         ["Name", "Average Cost", "Cuisines", "Aggregate Rating", "City"]
@@ -80,8 +72,8 @@ def restaurants() -> pd.DataFrame:
 def attractions() -> pd.DataFrame:
     """Return the attractions DataFrame with columns used for evaluation.
 
-    Columns: Name, Latitude, Longitude, Address, Phone, Website, City.
-    Mirrors the loader in tools/attractions/apis.py.
+    Returns:
+        DataFrame with columns: Name, Latitude, Longitude, Address, Phone, Website, City.
     """
     return pd.read_csv(_DB_DIR / "attractions" / "attractions.csv").dropna()[
         ["Name", "Latitude", "Longitude", "Address", "Phone", "Website", "City"]
@@ -92,8 +84,8 @@ def attractions() -> pd.DataFrame:
 def distance_matrix() -> pd.DataFrame:
     """Return the full distance matrix DataFrame.
 
-    Columns: origin, destination, duration, distance (and others).
-    Mirrors the loader in tools/googleDistanceMatrix/apis.py.
+    Returns:
+        DataFrame with columns: origin, destination, duration, distance (and others).
     """
     return pd.read_csv(_DB_DIR / "googleDistanceMatrix" / "distance.csv")
 
@@ -105,6 +97,9 @@ def city_state_map() -> dict[str, str]:
 
     Built from database/background/citySet_with_states.txt (tab-separated).
     Used in is_reasonable_visiting_city to validate destination state.
+
+    Returns:
+        Dict mapping city name to US state abbreviation.
     """
     lines = (
         (_DB_DIR / "background" / "citySet_with_states.txt")
@@ -121,10 +116,13 @@ def city_state_map() -> dict[str, str]:
 def distance_cost(org_city: str, dest_city: str, mode: str) -> int | None:
     """Look up the driving/taxi cost between two cities using the distance matrix.
 
-    Returns None if the pair is not found, or if either city/distance/duration
-    is invalid. Strips parenthetical state suffixes from city names (e.g.
-    "Phoenix(AZ)" → "Phoenix") before lookup, matching the behaviour of
-    googleDistanceMatrix.run_for_evaluation() from tools/googleDistanceMatrix/apis.py.
+    Args:
+        org_city: Origin city name. Parenthetical state suffix is stripped automatically.
+        dest_city: Destination city name. Parenthetical state suffix is stripped automatically.
+        mode: Transportation mode, either ``"self-driving"`` or ``"taxi"``.
+
+    Returns:
+        Integer cost in dollars, or None if the pair is not found or data is invalid.
     """
     org_city = extract_before_parenthesis(org_city)
     dest_city = extract_before_parenthesis(dest_city)
@@ -156,16 +154,14 @@ def cost_enquiry(plan: dict) -> str:
     """Calculate the cost of a one-day sub-plan.
 
     Mirrors ReactEnv.run() / ReactReflectEnv.run() from tools/planner/env.py.
-    Accepts the JSON dict produced by a CostEnquiry action (keys: people_number,
-    transportation, breakfast, lunch, dinner, accommodation, current_city) and
-    returns a human-readable cost string or an error message.
 
     Args:
-        plan: One-day plan dict as described in REACT_PLANNER_INSTRUCTION.
+        plan: One-day plan dict with keys: people_number, transportation, breakfast,
+            lunch, dinner, accommodation, current_city.
 
     Returns:
-        String of the form "The cost of your plan is N dollars." on success,
-        or an error string listing reasons the cost could not be computed.
+        String of the form ``"The cost of your plan is N dollars."`` on success,
+        or an error string listing the reasons the cost could not be computed.
     """
     total_cost = 0.0
     errors: list[str] = []

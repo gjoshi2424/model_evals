@@ -1,15 +1,3 @@
-"""
-Utility functions for TravelPlanner evaluation.
-
-Copied and adapted from the original TravelPlanner repository:
-- get_valid_name_city: utils/func.py
-- extract_before_parenthesis: utils/func.py
-- count_consecutive_values: utils/func.py
-- extract_from_to: evaluation/commonsense_constraint.py
-- transportation_match: evaluation/commonsense_constraint.py
-- is_valid_city_sequence: evaluation/commonsense_constraint.py
-"""
-
 import json
 import re
 from typing import Any
@@ -24,6 +12,13 @@ def extract_before_parenthesis(s: str) -> str:
 
     Example: "Chicago (IL)" → "Chicago "
     Copied verbatim from utils/func.py.
+
+    Args:
+        s: Input string, potentially containing parenthetical content.
+
+    Returns:
+        String with everything from the first ``(`` onwards removed,
+        or the original string unchanged if no parentheses are found.
     """
     match = re.search(r"^(.*?)\([^)]*\)", s)
     return match.group(1) if match else s
@@ -34,6 +29,13 @@ def get_valid_name_city(info: str) -> tuple[str, str]:
 
     Returns ("-", "-") if parsing fails.
     Copied verbatim from utils/func.py.
+
+    Args:
+        info: String in the format ``"Name, City(State)"`` or ``"Name, City"``.
+
+    Returns:
+        Tuple of ``(name, city)`` with any state suffix stripped from city.
+        Returns ``("-", "-")`` if the string cannot be parsed.
     """
     pattern = r"(.*?),\s*([^,]+)(\(\w[\w\s]*\))?$"
     match = re.search(pattern, info)
@@ -51,6 +53,13 @@ def count_consecutive_values(lst: list) -> list[tuple]:
 
     Example: ["A","A","B","A"] → [("A",2),("B",1),("A",1)]
     Copied verbatim from utils/func.py.
+
+    Args:
+        lst: List of comparable values.
+
+    Returns:
+        List of ``(value, count)`` tuples for each run of identical values.
+        Returns an empty list if ``lst`` is empty.
     """
     if not lst:
         return []
@@ -76,6 +85,13 @@ def extract_from_to(text: str) -> tuple[str | None, str | None]:
 
     Returns (None, None) if no match is found.
     Copied verbatim from evaluation/commonsense_constraint.py.
+
+    Args:
+        text: String that may contain a ``"from X to Y"`` pattern.
+
+    Returns:
+        Tuple of ``(origin, destination)`` strings, or ``(None, None)`` if
+        no match is found.
     """
     pattern = r"from\s+(.+?)\s+to\s+([^,]+)(?=[,\s]|$)"
     matches = re.search(pattern, text)
@@ -87,6 +103,13 @@ def transportation_match(text: str) -> str | None:
 
     Returns 'Taxi', 'Self-driving', or 'Flight'.
     Copied verbatim from evaluation/commonsense_constraint.py.
+
+    Args:
+        text: Free-form transportation description (e.g. from a plan day entry).
+
+    Returns:
+        One of ``"Taxi"``, ``"Self-driving"``, or ``"Flight"``, or None if the
+        mode cannot be determined.
     """
     if "taxi" in text.lower():
         return "Taxi"
@@ -104,6 +127,12 @@ def is_valid_city_sequence(city_list: list[str]) -> bool:
     (at least twice), and no city reappears once its consecutive block ends.
     The first and last city (origin) are exempt from this constraint.
     Copied verbatim from evaluation/commonsense_constraint.py.
+
+    Args:
+        city_list: Ordered list of city names representing the day-by-day itinerary.
+
+    Returns:
+        True if the sequence is valid, False otherwise.
     """
     min_cities = 3  # origin + at least one destination + return to origin
     if len(city_list) < min_cities:
@@ -141,6 +170,12 @@ def parse_json_plan(raw: str) -> list[dict[str, Any]] | None:
     The LLM is instructed to wrap the JSON in ```json ... ```.
     Falls back to a bare eval() on the raw string if that fails.
     Returns None if all parsing attempts fail.
+
+    Args:
+        raw: Raw LLM output string, expected to contain a JSON array of day-plan dicts.
+
+    Returns:
+        Parsed list of per-day plan dicts, or None if all parsing attempts fail.
     """
     # Try ```json ... ``` code block first (standard GPT-4 format)
     try:

@@ -4,7 +4,6 @@ from inspect_ai import Task, task
 from inspect_ai.agent import Agent
 from inspect_ai.solver import Solver
 
-from _version import EVAL_VERSION
 from dataset import Split, travel_planner_dataset
 from prompts import COT_PLANNER_INSTRUCTION, PLANNER_INSTRUCTION, REACT_USER_TEMPLATE
 from scorer import travel_planner_scorer
@@ -56,8 +55,6 @@ def travel_planner(
             planner_instruction=instructions_dict[strategy],
         ),
         solver=solvers_dict[strategy],
-        scorer=travel_planner_scorer(parse_model=parse_model),
-        version=EVAL_VERSION.comparability_version,
-        metadata=EVAL_VERSION.to_metadata(),
+        scorer=travel_planner_scorer(parse_model=parse_model)
     )
 

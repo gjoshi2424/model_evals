@@ -47,10 +47,6 @@ def travel_planner_scorer(
 
     async def score(state: TaskState, target: Target) -> Score:
         plan_text: str = state.output.completion.strip()
-
-        # ------------------------------------------------------------------
-        # Delivery check: did the model produce any plan at all?
-        # ------------------------------------------------------------------
         if not plan_text:
             logger.warning(f"Sample {state.sample_id}: empty plan output")
             return Score(
@@ -59,16 +55,8 @@ def travel_planner_scorer(
                 explanation=ScoreExplanation.EMPTY_PLAN,
                 metadata={"delivered": False},
             )
-
-        # ------------------------------------------------------------------
         # Step 1: Parse natural-language plan → structured JSON
-        # Uses an LLM with the same prompt as the original postprocess step.
-        # (postprocess/openai_request.py :: build_plan_format_conversion_prompt)
-        # ------------------------------------------------------------------
         parsing_prompt = FORMAT_CONVERSION_PREFIX + f"Text:\n{plan_text}\nJSON:\n"
-
-        # Original postprocess/openai_request.py passes a system message
-        # "You are a helpful assistant." via prompt_chatgpt().
         model = get_model(parse_model)
         parse_response = await model.generate(
             input=[
@@ -96,18 +84,10 @@ def travel_planner_scorer(
                 },
             )
 
-        # ------------------------------------------------------------------
         # Step 2: Evaluate constraints
-        # Follows evaluation/eval.py: commonsense first, then hard constraints
         # (hard constraints are only evaluated if the plan is not absent).
-        # ------------------------------------------------------------------
         query_data: dict[str, Any] = state.metadata
-
         commonsense_results = commonsense.evaluation(query_data, parsed_plan)
-
-        # Gate: only run hard constraints if completeness and sandbox checks pass.
-        # Matches original eval.py: hard_eval only runs if
-        # is_not_absent[0] and is_valid_information_in_sandbox[0].
         not_absent_pass = commonsense_results["is_not_absent"][0]
         sandbox_pass = commonsense_results["is_valid_information_in_sandbox"][0]
         if not_absent_pass and sandbox_pass:
@@ -115,11 +95,7 @@ def travel_planner_scorer(
         else:
             hard_results = None
 
-        # ------------------------------------------------------------------
         # Determine final pass/fail
-        # A plan passes if ALL commonsense checks pass AND ALL hard checks pass.
-        # (None values mean the constraint was not applicable — treated as passing.)
-        # ------------------------------------------------------------------
         commonsense_pass = _all_pass(commonsense_results)
         hard_pass = _all_pass(hard_results) if hard_results is not None else True
 
@@ -173,6 +149,13 @@ def _all_pass(results: dict[str, tuple] | None) -> bool:
     A check result of False means it failed. None means it was not applicable
     (e.g. no transportation constraint was set by the user), which counts as
     passing (matching original eval.py behaviour).
+
+    Args:
+        results: Dict mapping check name to ``(result, reason)`` tuples, or None
+            (treated as all-pass).
+
+    Returns:
+        True if no check returned False, False otherwise.
     """
     if results is None:
         return True
@@ -183,7 +166,17 @@ def _build_failure_explanation(
     commonsense_results: dict[str, tuple],
     hard_results: dict[str, tuple] | None,
 ) -> str:
-    """Build a human-readable explanation of which constraints failed."""
+    """Build a human-readable explanation of which constraints failed.
+
+    Args:
+        commonsense_results: Dict mapping commonsense check name to
+            ``(result, reason)`` tuples.
+        hard_results: Dict mapping hard check name to ``(result, reason)`` tuples,
+            or None if hard constraints were not evaluated.
+
+    Returns:
+        Single-line string listing every failed check and its reason.
+    """
     failures: list[str] = []
 
     for check_name, (result, reason) in commonsense_results.items():

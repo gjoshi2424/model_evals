@@ -1,11 +1,3 @@
-"""
-Hard constraint evaluation for TravelPlanner.
-
-Ported from the original TravelPlanner repository (evaluation/hard_constraint.py).
-
-All checks from the original are implemented, using the bundled travel database CSV files.
-"""
-
 import math
 import re
 from typing import Any
@@ -17,18 +9,18 @@ from utils import (
     get_valid_name_city,
 )
 
-# ---------------------------------------------------------------------------
-# Individual constraint checks
-# ---------------------------------------------------------------------------
-
-
 def is_valid_transportation(
     question: dict[str, Any], tested_data: list[dict[str, Any]]
 ) -> tuple[bool | None, str | None]:
     """Check that the transportation mode satisfies the user's constraint.
 
-    Returns (None, None) if no transportation constraint was set.
-    Adapted from evaluation/hard_constraint.py.
+    Args:
+        question: Query metadata dict with fields: days, local_constraint.
+        tested_data: List of per-day plan dicts with key: transportation.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes), False (fails), or
+        None (constraint not set), and reason is a human-readable failure message or None.
     """
     if question["local_constraint"]["transportation"] is None:
         return None, None
@@ -62,8 +54,13 @@ def get_total_cost(
 ) -> float:
     """Compute the total monetary cost of a plan.
 
-    Sums transportation, meal, and accommodation costs using the bundled databases.
-    Adapted from evaluation/hard_constraint.py.
+    Args:
+        question: Query metadata dict with fields: days, people_number.
+        tested_data: List of per-day plan dicts with keys: transportation, current_city,
+            breakfast, lunch, dinner, accommodation.
+
+    Returns:
+        Total cost as a float.
     """
     total_cost = 0.0
 
@@ -137,8 +134,13 @@ def is_valid_room_rule(
 ) -> tuple[bool | None, str | None]:
     """Check that each accommodation's house rules satisfy the user's constraint.
 
-    Returns (None, None) if no house rule constraint was set.
-    Copied verbatim from evaluation/hard_constraint.py.
+    Args:
+        question: Query metadata dict with fields: days, local_constraint.
+        tested_data: List of per-day plan dicts with key: accommodation.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes), False (fails), or
+        None (constraint not set), and reason is a human-readable failure message or None.
     """
     if question["local_constraint"]["house rule"] is None:
         return None, None
@@ -174,8 +176,13 @@ def is_valid_cuisine(
 ) -> tuple[bool | None, str | None]:
     """Check that all requested cuisine types appear at least once across the trip.
 
-    Returns (None, None) if no cuisine constraint was set.
-    Copied verbatim from evaluation/hard_constraint.py.
+    Args:
+        question: Query metadata dict with fields: days, org, local_constraint.
+        tested_data: List of per-day plan dicts with keys: breakfast, lunch, dinner.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes), False (fails), or
+        None (constraint not set), and reason is a human-readable failure message or None.
     """
     if not question["local_constraint"]["cuisine"]:
         return None, None
@@ -211,8 +218,13 @@ def is_valid_room_type(
 ) -> tuple[bool | None, str | None]:
     """Check that each accommodation matches the required room type.
 
-    Returns (None, None) if no room type constraint was set.
-    Copied verbatim from evaluation/hard_constraint.py.
+    Args:
+        question: Query metadata dict with fields: days, local_constraint.
+        tested_data: List of per-day plan dicts with key: accommodation.
+
+    Returns:
+        Tuple of ``(result, reason)`` where result is True (passes), False (fails), or
+        None (constraint not set), and reason is a human-readable failure message or None.
     """
     if question["local_constraint"]["room type"] is None:
         return None, None
@@ -256,8 +268,16 @@ def evaluation(
 ) -> dict[str, tuple]:
     """Run all hard constraint checks on a parsed plan.
 
-    Returns a dict mapping check name → (bool | None, reason | None).
-    Adapted from evaluation/hard_constraint.py :: evaluation().
+    Args:
+        query_data: Query metadata dict with fields: days, people_number, budget,
+            local_constraint.
+        tested_data: List of per-day plan dicts with keys: transportation, current_city,
+            breakfast, lunch, dinner, accommodation.
+
+    Returns:
+        Dict mapping check name to ``(result, reason)`` tuples. result is True (passes),
+        False (fails), or None (constraint not applicable), and reason is a
+        human-readable failure message or None.
     """
     return_info: dict[str, tuple] = {}
     return_info["valid_transportation"] = is_valid_transportation(
