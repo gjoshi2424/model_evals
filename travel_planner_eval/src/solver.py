@@ -62,7 +62,7 @@ def cost_enquiry_tool() -> Tool:
 
 
 def _make_react_agent(system_prompt: str) -> object:
-    """Create a react() agent with the given system prompt and cost_enquiry tool.
+    """Create a react() agent with the given system prompt.
 
     Args:
         system_prompt: System-level instructions injected into the agent via AgentPrompt.
@@ -91,10 +91,6 @@ def _make_react_agent(system_prompt: str) -> object:
 @solver
 def sole_planning() -> Solver:
     """Sole-planning solver for the direct and CoT strategies.
-
-    The prompt that distinguishes the two strategies is injected at the dataset
-    level (PLANNER_INSTRUCTION vs COT_PLANNER_INSTRUCTION), so the solver body
-    is the same for both.
 
     Returns:
         Solver that generates a single completion for the planner prompt.

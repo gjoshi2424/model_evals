@@ -96,9 +96,6 @@ def distance_matrix() -> pd.DataFrame:
 def city_state_map() -> dict[str, str]:
     """Return a mapping of city name → US state name.
 
-    Built from database/background/citySet_with_states.txt (tab-separated).
-    Used in is_reasonable_visiting_city to validate destination state.
-
     Returns:
         Dict mapping city name to US state abbreviation.
     """
@@ -153,9 +150,7 @@ def distance_cost(org_city: str, dest_city: str, mode: str) -> int | None:
 
 def cost_enquiry(plan: dict) -> str:
     """Calculate the cost of a one-day sub-plan.
-
-    Mirrors ReactEnv.run() / ReactReflectEnv.run() from tools/planner/env.py.
-
+    
     Args:
         plan: One-day plan dict with keys: people_number, transportation, breakfast,
             lunch, dinner, accommodation, current_city.

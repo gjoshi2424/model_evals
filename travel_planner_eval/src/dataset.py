@@ -5,11 +5,10 @@ from inspect_ai.dataset import Dataset, Sample, hf_dataset
 
 from prompts import PLANNER_INSTRUCTION
 
-# HuggingFace dataset identifier
 DATASET = "osunlp/TravelPlanner"
 DATASET_REVISION = "8736504ecfc31b7f8b7e40122873c337e83fff7c"
 
-# Available evaluated splits (test has no labels)
+# Available evaluated splits
 Split = Literal["train", "validation"]
 
 
@@ -30,9 +29,6 @@ def travel_planner_dataset(
         Inspect Dataset of TravelPlanner samples.
     """
 
-    def record_to_sample(record: dict[str, Any]) -> Sample:
-        return _record_to_sample(record, planner_instruction)
-
     return hf_dataset(
         DATASET,
         name=split,
@@ -42,7 +38,7 @@ def travel_planner_dataset(
     )
 
 
-def _record_to_sample(record: dict[str, Any], planner_instruction: str) -> Sample:
+def record_to_sample(record: dict[str, Any], planner_instruction: str) -> Sample:
     """Convert a single HuggingFace dataset record into an Inspect Sample.
 
     Args:

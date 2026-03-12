@@ -258,11 +258,6 @@ def is_valid_room_type(
     return True, None
 
 
-# ---------------------------------------------------------------------------
-# Aggregate evaluation entry point
-# ---------------------------------------------------------------------------
-
-
 def evaluation(
     query_data: dict[str, Any], tested_data: list[dict[str, Any]]
 ) -> dict[str, tuple]:

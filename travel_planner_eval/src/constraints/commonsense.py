@@ -11,7 +11,7 @@ from utils import (
     transportation_match,
 )
 
-# Days threshold above which cities must belong to the destination state (original uses 3)
+# Days threshold above which cities must belong to the destination state
 MIN_DAYS_FOR_STATE_CHECK = 3
 
 
@@ -19,12 +19,6 @@ def is_reasonable_visiting_city(
     question: dict[str, Any], tested_data: list[dict[str, Any]]
 ) -> tuple[bool, str | None]:
     """Check that the city visit sequence forms a valid closed-loop itinerary.
-
-    Verifies:
-    - First city is the departure city (org)
-    - Trip is a closed circle (returns to departure)
-    - City sequence has no invalid back-and-forth patterns
-    - All cities are valid and within the destination state (for trips > 3 days)
 
     Args:
         question: Query metadata dict with fields: org, dest, days.
@@ -410,8 +404,6 @@ def is_valid_accommodation(
 ) -> tuple[bool, str | None]:
     """Check that each accommodation meets the minimum nights requirement.
 
-    Copied verbatim from evaluation/commonsense_constraint.py.
-
     Args:
         question: Query metadata dict with field: days.
         tested_data: List of per-day plan dicts with key: accommodation.
@@ -449,8 +441,6 @@ def is_valid_visiting_city_number(
     question: dict[str, Any], tested_data: list[dict[str, Any]]
 ) -> tuple[bool, str | None]:
     """Check that the correct number of destination cities are visited.
-
-    Copied verbatim from evaluation/commonsense_constraint.py.
 
     Args:
         question: Query metadata dict with fields: org, days, visiting_city_number.
@@ -518,10 +508,6 @@ def is_not_absent(
     question: dict[str, Any], tested_data: list[dict[str, Any]]
 ) -> tuple[bool, str | None]:
     """Check that no critical fields are missing from the plan.
-
-    Verifies all required keys are present and that at least 50% of fields
-    are filled in. Also validates day count and visiting city count.
-    Copied verbatim from evaluation/commonsense_constraint.py.
 
     Args:
         question: Query metadata dict with fields: days, org, visiting_city_number.
@@ -592,9 +578,6 @@ def evaluation(
     query_data: dict[str, Any], tested_data: list[dict[str, Any]]
 ) -> dict[str, tuple]:
     """Run all commonsense constraint checks on a parsed plan.
-
-    Returns a dict mapping check name → (bool | None, reason | None).
-    Adapted from evaluation/commonsense_constraint.py :: evaluation().
 
     Args:
         query_data: Query metadata dict with fields: org, dest, days,

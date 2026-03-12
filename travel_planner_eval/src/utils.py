@@ -2,16 +2,8 @@ import json
 import re
 from typing import Any
 
-# ---------------------------------------------------------------------------
-# String / data extraction helpers
-# ---------------------------------------------------------------------------
-
-
 def extract_before_parenthesis(s: str) -> str:
     """Extract the portion of a string before any parenthetical expression.
-
-    Example: "Chicago (IL)" → "Chicago "
-    Copied verbatim from utils/func.py.
 
     Args:
         s: Input string, potentially containing parenthetical content.
@@ -26,9 +18,6 @@ def extract_before_parenthesis(s: str) -> str:
 
 def get_valid_name_city(info: str) -> tuple[str, str]:
     """Parse 'Name, City(State)' style strings into (name, city) tuples.
-
-    Returns ("-", "-") if parsing fails.
-    Copied verbatim from utils/func.py.
 
     Args:
         info: String in the format ``"Name, City(State)"`` or ``"Name, City"``.
@@ -50,10 +39,6 @@ def get_valid_name_city(info: str) -> tuple[str, str]:
 
 def count_consecutive_values(lst: list) -> list[tuple]:
     """Group consecutive identical values in a list.
-
-    Example: ["A","A","B","A"] → [("A",2),("B",1),("A",1)]
-    Copied verbatim from utils/func.py.
-
     Args:
         lst: List of comparable values.
 
@@ -83,9 +68,6 @@ def count_consecutive_values(lst: list) -> list[tuple]:
 def extract_from_to(text: str) -> tuple[str | None, str | None]:
     """Extract origin and destination from 'from A to B' style strings.
 
-    Returns (None, None) if no match is found.
-    Copied verbatim from evaluation/commonsense_constraint.py.
-
     Args:
         text: String that may contain a ``"from X to Y"`` pattern.
 
@@ -100,9 +82,6 @@ def extract_from_to(text: str) -> tuple[str | None, str | None]:
 
 def transportation_match(text: str) -> str | None:
     """Classify a transportation description string into a canonical mode.
-
-    Returns 'Taxi', 'Self-driving', or 'Flight'.
-    Copied verbatim from evaluation/commonsense_constraint.py.
 
     Args:
         text: Free-form transportation description (e.g. from a plan day entry).
@@ -122,11 +101,6 @@ def transportation_match(text: str) -> str | None:
 
 def is_valid_city_sequence(city_list: list[str]) -> bool:
     """Check that a city visit sequence is valid.
-
-    A valid sequence has every intermediate city appearing consecutively
-    (at least twice), and no city reappears once its consecutive block ends.
-    The first and last city (origin) are exempt from this constraint.
-    Copied verbatim from evaluation/commonsense_constraint.py.
 
     Args:
         city_list: Ordered list of city names representing the day-by-day itinerary.
@@ -159,17 +133,8 @@ def is_valid_city_sequence(city_list: list[str]) -> bool:
     return True
 
 
-# ---------------------------------------------------------------------------
-# JSON plan parsing helpers
-# ---------------------------------------------------------------------------
-
-
 def parse_json_plan(raw: str) -> list[dict[str, Any]] | None:
     """Extract and parse a JSON plan from LLM output.
-
-    The LLM is instructed to wrap the JSON in ```json ... ```.
-    Falls back to a bare eval() on the raw string if that fails.
-    Returns None if all parsing attempts fail.
 
     Args:
         raw: Raw LLM output string, expected to contain a JSON array of day-plan dicts.

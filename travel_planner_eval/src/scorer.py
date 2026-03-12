@@ -98,8 +98,8 @@ def travel_planner_scorer(
             hard_results = None
 
         # Determine final pass/fail
-        commonsense_pass = _all_pass(commonsense_results)
-        hard_pass = _all_pass(hard_results) if hard_results is not None else True
+        commonsense_pass = all_pass(commonsense_results)
+        hard_pass = all_pass(hard_results) if hard_results is not None else True
 
         final_pass = commonsense_pass and hard_pass
 
@@ -127,7 +127,7 @@ def travel_planner_scorer(
         explanation = (
             ScoreExplanation.ALL_PASS
             if final_pass
-            else _build_failure_explanation(commonsense_results, hard_results)
+            else build_failure_explanation(commonsense_results, hard_results)
         )
 
         return Score(
@@ -140,18 +140,8 @@ def travel_planner_scorer(
     return score
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _all_pass(results: dict[str, tuple] | None) -> bool:
+def all_pass(results: dict[str, tuple] | None) -> bool:
     """Return True if every check in results passed (True) or was N/A (None).
-
-    A check result of False means it failed. None means it was not applicable
-    (e.g. no transportation constraint was set by the user), which counts as
-    passing (matching original eval.py behaviour).
-
     Args:
         results: Dict mapping check name to ``(result, reason)`` tuples, or None
             (treated as all-pass).
@@ -164,11 +154,11 @@ def _all_pass(results: dict[str, tuple] | None) -> bool:
     return all(result is not False for result, _ in results.values())
 
 
-def _build_failure_explanation(
+def build_failure_explanation(
     commonsense_results: dict[str, tuple],
     hard_results: dict[str, tuple] | None,
 ) -> str:
-    """Build a human-readable explanation of which constraints failed.
+    """Build an explanation of which constraints failed.
 
     Args:
         commonsense_results: Dict mapping commonsense check name to

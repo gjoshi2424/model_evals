@@ -22,8 +22,6 @@ from constraints.commonsense import (
     is_valid_visiting_city_number,
 )
 
-# Helpers / shared fixtures
-
 # A minimal city→state mapping used for is_reasonable_visiting_city tests.
 _CITY_STATE = {
     "New York": "New York",
