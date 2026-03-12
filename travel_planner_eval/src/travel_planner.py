@@ -8,8 +8,7 @@ from dataset import Split, travel_planner_dataset
 from prompts import COT_PLANNER_INSTRUCTION, PLANNER_INSTRUCTION, REACT_USER_TEMPLATE
 from scorer import travel_planner_scorer
 from solver import (
-    sole_planning_cot,
-    sole_planning_direct,
+    sole_planning,
     sole_planning_react,
     sole_planning_reflexion,
 )
@@ -37,8 +36,8 @@ def travel_planner(
         Configured Inspect Task.
     """
     solvers_dict: dict[Strategy, Solver | Agent] = {
-        "direct": sole_planning_direct(),
-        "cot": sole_planning_cot(),
+        "direct": sole_planning(),
+        "cot": sole_planning(),
         "react": sole_planning_react(),
         "reflexion": sole_planning_reflexion(),
     }

@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 from utils import extract_before_parenthesis, extract_from_to, get_valid_name_city
 import math as _math
+import re as _re
 
 
 _DB_DIR: Path = Path(__file__).parent / "database"
@@ -207,7 +208,7 @@ def cost_enquiry(plan: dict) -> str:
         if name == "-" or city == "-":
             return
         df = restaurants()
-        res = df[(df["Name"] == name) & (df["City"] == city)]
+        res = df[(df["Name"].astype(str).str.contains(_re.escape(name))) & (df["City"] == city)]
         if len(res) > 0:
             nonlocal total_cost
             total_cost += float(res["Average Cost"].values[0]) * people

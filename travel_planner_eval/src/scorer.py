@@ -57,6 +57,8 @@ def travel_planner_scorer(
             )
         # Step 1: Parse natural-language plan → structured JSON
         parsing_prompt = FORMAT_CONVERSION_PREFIX + f"Text:\n{plan_text}\nJSON:\n"
+        # get_model(None) returns the current task model; passing a string uses a
+        # separate model. Either way, parsing costs appear in that model's log usage.
         model = get_model(parse_model)
         parse_response = await model.generate(
             input=[

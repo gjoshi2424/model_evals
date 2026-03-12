@@ -3,6 +3,7 @@
 Database calls are patched at the module level so tests run without CSV data files.
 """
 
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import pandas as pd
@@ -11,7 +12,7 @@ from constraints.commonsense import (
     evaluation,
     is_not_absent,
     is_reasonable_visiting_city,
-    is_valid_accommodaton,
+    is_valid_accommodation,
     is_valid_attractions,
     is_valid_days,
     is_valid_information_in_current_city,
@@ -30,6 +31,27 @@ _CITY_STATE = {
     "San Francisco": "California",
     "Chicago": "Illinois",
 }
+
+
+@contextmanager
+def _patch_all_databases(city_state=None):
+    """Patch every database call with empty DataFrames (and optionally city_state_map).
+
+    Use this in any test that calls evaluation() or is_valid_information_in_sandbox()
+    without real CSV data, so that all database paths are hermetically isolated.
+    """
+    empty_restaurants = pd.DataFrame(columns=["Name", "City", "Average Cost", "Cuisines"])
+    empty_flights = pd.DataFrame(columns=["Flight Number", "OriginCityName", "DestCityName", "Price"])
+    empty_attractions = pd.DataFrame(columns=["Name", "City"])
+    empty_accommodations = pd.DataFrame(
+        columns=["NAME", "city", "minimum nights", "price", "maximum occupancy", "house_rules", "room type"]
+    )
+    with patch("database.city_state_map", return_value=city_state or _CITY_STATE), \
+         patch("database.flights", return_value=empty_flights), \
+         patch("database.restaurants", return_value=empty_restaurants), \
+         patch("database.attractions", return_value=empty_attractions), \
+         patch("database.accommodations", return_value=empty_accommodations):
+        yield
 
 
 def _day(
@@ -317,17 +339,9 @@ def test_valid_info_in_sandbox_invalid_restaurant():
         columns=["Name", "City", "Average Cost", "Cuisines"]
     )
     with patch("database.restaurants", return_value=mock_restaurants_df):
-        result, reason = is_valid_info_in_sandbox_with_restaurant(
-            question, data, mock_restaurants_df
-        )
+        result, reason = is_valid_information_in_sandbox(question, data)
     assert result is False
     assert "breakfast" in reason
-
-
-def is_valid_info_in_sandbox_with_restaurant(question, data, mock_df):
-    """Helper to patch restaurants and call is_valid_information_in_sandbox."""
-    with patch("database.restaurants", return_value=mock_df):
-        return is_valid_information_in_sandbox(question, data)
 
 
 def test_valid_accommodaton_meets_minimum_nights():
@@ -348,7 +362,7 @@ def test_valid_accommodaton_meets_minimum_nights():
         }
     )
     with patch("database.accommodations", return_value=mock_acc_df):
-        result, reason = is_valid_accommodaton(question, data)
+        result, reason = is_valid_accommodation(question, data)
     assert result is True
 
 
@@ -371,7 +385,7 @@ def test_valid_accommodaton_violates_minimum_nights():
         }
     )
     with patch("database.accommodations", return_value=mock_acc_df):
-        result, reason = is_valid_accommodaton(question, data)
+        result, reason = is_valid_accommodation(question, data)
     assert result is False
     assert "minimum" in reason.lower() or "nights" in reason.lower()
 
@@ -494,11 +508,8 @@ def test_evaluation_returns_all_check_keys():
         _day("Los Angeles"),
         _day("from Los Angeles to New York"),
     ]
-    with patch("database.city_state_map", return_value=_CITY_STATE):
-        with patch("database.accommodations", return_value=pd.DataFrame(
-            columns=["NAME", "city", "minimum nights", "price", "maximum occupancy", "house_rules", "room type"]
-        )):
-            results = evaluation(question, data)
+    with _patch_all_databases():
+        results = evaluation(question, data)
 
     expected_keys = {
         "is_reasonable_visiting_city",
@@ -516,11 +527,8 @@ def test_evaluation_returns_all_check_keys():
 def test_evaluation_returns_tuples():
     question = _question(org="New York", dest="California", days=1, visiting_city_number=1)
     data = [_day("from New York to Los Angeles")]
-    with patch("database.city_state_map", return_value=_CITY_STATE):
-        with patch("database.accommodations", return_value=pd.DataFrame(
-            columns=["NAME", "city", "minimum nights", "price", "maximum occupancy", "house_rules", "room type"]
-        )):
-            results = evaluation(question, data)
+    with _patch_all_databases():
+        results = evaluation(question, data)
 
     for key, value in results.items():
         assert isinstance(value, tuple), f"Expected tuple for {key}, got {type(value)}"

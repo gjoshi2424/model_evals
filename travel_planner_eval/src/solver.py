@@ -2,7 +2,7 @@ import json
 import logging
 
 from inspect_ai.agent import Agent, AgentPrompt, AgentState, react, run
-from inspect_ai.model import ChatMessageTool, ChatMessageUser, get_model
+from inspect_ai.model import ChatMessage, ChatMessageTool, ChatMessageUser, get_model
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.tool import Tool, tool
 
@@ -14,6 +14,16 @@ from prompts import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _msg_text(m: ChatMessage) -> str:
+    """Safely extract text from any ChatMessage subtype."""
+    if isinstance(m.content, str):
+        return m.content
+    if isinstance(m.content, list):
+        return " ".join(getattr(part, "text", "") for part in m.content)
+    return ""
+
 
 # Maximum reflection retries for the Reflexion strategy.
 REFLEXION_MAX_RETRIES: int = 3
@@ -79,25 +89,15 @@ def _make_react_agent(system_prompt: str) -> object:
 
 
 @solver
-def sole_planning_direct() -> Solver:
-    """Sole-planning solver using the direct strategy.
+def sole_planning() -> Solver:
+    """Sole-planning solver for the direct and CoT strategies.
+
+    The prompt that distinguishes the two strategies is injected at the dataset
+    level (PLANNER_INSTRUCTION vs COT_PLANNER_INSTRUCTION), so the solver body
+    is the same for both.
 
     Returns:
         Solver that generates a single completion for the planner prompt.
-    """
-
-    async def solve(state: TaskState, generate_fn: Generate) -> TaskState:
-        return await generate_fn(state)
-
-    return solve
-
-
-@solver
-def sole_planning_cot() -> Solver:
-    """Sole-planning solver using the chain-of-thought (CoT) strategy.
-
-    Returns:
-        Solver that generates a single completion for the CoT planner prompt.
     """
 
     async def solve(state: TaskState, generate_fn: Generate) -> TaskState:
@@ -160,7 +160,7 @@ def sole_planning_reflexion() -> Solver:
 
             # Reflexion step: ask the model to diagnose the failure
             history = "\n".join(
-                m.text for m in agent_state.messages
+                f"[{m.role}] {_msg_text(m)}" for m in agent_state.messages
             )
             reflect_prompt = REFLECT_INSTRUCTION.format(
                 text=text,

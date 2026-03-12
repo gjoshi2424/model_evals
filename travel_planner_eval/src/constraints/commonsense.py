@@ -405,7 +405,7 @@ def is_valid_information_in_sandbox(
     return True, None
 
 
-def is_valid_accommodaton(
+def is_valid_accommodation(
     question: dict[str, Any], tested_data: list[dict[str, Any]]
 ) -> tuple[bool, str | None]:
     """Check that each accommodation meets the minimum nights requirement.
@@ -612,7 +612,7 @@ def evaluation(
     )
     return_info["is_valid_restaurants"] = is_valid_restaurants(query_data, tested_data)
     return_info["is_valid_attractions"] = is_valid_attractions(query_data, tested_data)
-    return_info["is_valid_accommodation"] = is_valid_accommodaton(
+    return_info["is_valid_accommodation"] = is_valid_accommodation(
         query_data, tested_data
     )
     return_info["is_valid_transportation"] = is_valid_transportation(

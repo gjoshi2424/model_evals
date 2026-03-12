@@ -97,8 +97,6 @@ Scoring replicates the original paper's two-step process:
 |---|---|
 | `valid_transportation` | Transport mode satisfies the user's constraint (e.g. "no flight") |
 
-> **Note**: Constraint checks that require the travel database CSV files (price lookups, accommodation details, restaurant cuisine data) are not yet implemented. These include `is_valid_information_in_sandbox`, `is_valid_accommodaton` (minimum nights), `valid_cost`, `valid_cuisine`, `valid_room_rule`, and `valid_room_type`.
-
 The primary metric is **Commonsense Macro Pass Rate**: a sample passes if all implemented commonsense constraint checks pass, and the macro pass rate is the fraction of samples that pass.
 
 ## Evaluation Report

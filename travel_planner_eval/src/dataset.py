@@ -1,3 +1,4 @@
+import ast
 from typing import Any, Literal
 
 from inspect_ai.dataset import Dataset, Sample, hf_dataset
@@ -56,7 +57,7 @@ def _record_to_sample(record: dict[str, Any], planner_instruction: str) -> Sampl
     # Parse local_constraint if it came through as a string (happens in some HF splits)
     local_constraint = record["local_constraint"]
     if isinstance(local_constraint, str):
-        local_constraint = eval(local_constraint)
+        local_constraint = ast.literal_eval(local_constraint)
 
     text = record["reference_information"]
     query = record["query"]
