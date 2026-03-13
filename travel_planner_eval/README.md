@@ -65,10 +65,12 @@ uv run inspect eval src/ \
 
 The dataset is loaded from [osunlp/TravelPlanner](https://huggingface.co/datasets/osunlp/TravelPlanner) on HuggingFace.
 
-| Split      | Samples | Levels              |
-|------------|---------|---------------------|
+| Split      | Samples | Levels               |
+|------------|---------|----------------------|
 | train      | 45      | easy / medium / hard |
 | validation | 180     | easy / medium / hard |
+
+The **test split** exists on HuggingFace but is not supported here. It omits the columns required for scoring (`people_number`, `budget`, `visiting_city_number`, `local_constraint`, `annotated_plan`)
 
 Each sample is a travel query (e.g. "Plan a 5-day trip for 4 people from Seattle to California with a $12,000 budget, preferring Italian cuisine") paired with pre-collected reference information about available flights, hotels, restaurants, and attractions.
 
@@ -121,7 +123,7 @@ uv run inspect eval src/ --model openai/gpt-3.5-turbo-1106 --limit 20 -T split=v
 ## Differences from Original Implementation
 
 1. **Planning strategies**: Adds `react` and `reflexion` strategies using Inspect AI's native `react()` agent, in addition to the original `direct` and `cot` strategies.
-2. **ReAct tooling**: The original codebase uses a custom agent loop; this implementation uses `inspect_ai.agent.react()` with a `cost_enquiry` tool exposed to the model.
+2. **ReAct tooling**: The original codebase uses a custom agent loop that templates `{scratchpad}` directly into the prompt and parses `CostEnquiry[...]` / `Finish[...]` patterns from raw text. This implementation uses `inspect_ai.agent.react()`, which manages conversation history as structured messages and exposes `cost_enquiry` and `submit` as native model tools. As a result, `REACT_AGENT_SYSTEM_PROMPT` is a static system prompt with no `{scratchpad}` placeholder, and the per-query context (`{text}`, `{query}`) is passed as the user message via `REACT_USER_TEMPLATE`.
 3. **Parsing model**: The original uses GPT-4 specifically for the JSON parsing step; this implementation defaults to the task model, keeping the evaluation self-contained. GPT-4 or any other model can still be set via `parse_model`.
 4. **Evaluation framework**: Uses Inspect AI for structured task definition, scoring, and metrics rather than the original standalone scripts.
 5. **Scorer output**: Constraint results are stored as structured `ScoreExplanation` metadata on each sample, making per-constraint analysis directly accessible in the Inspect log viewer.

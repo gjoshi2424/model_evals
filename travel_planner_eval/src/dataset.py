@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from inspect_ai.dataset import Dataset, Sample, hf_dataset
 
-from prompts import PLANNER_INSTRUCTION
+from prompts import DIRECT_PLANNER_INSTRUCTION
 
 DATASET = "osunlp/TravelPlanner"
 DATASET_REVISION = "8736504ecfc31b7f8b7e40122873c337e83fff7c"
@@ -14,7 +14,7 @@ Split = Literal["train", "validation"]
 
 def travel_planner_dataset(
     split: Split = "validation",
-    planner_instruction: str = PLANNER_INSTRUCTION,
+    planner_instruction: str = DIRECT_PLANNER_INSTRUCTION,
 ) -> Dataset:
     """Load the TravelPlanner dataset from HuggingFace.
 
@@ -33,7 +33,7 @@ def travel_planner_dataset(
         DATASET,
         name=split,
         split=split,
-        sample_fields=record_to_sample,
+        sample_fields=lambda record: record_to_sample(record, planner_instruction),
         revision=DATASET_REVISION,
     )
 

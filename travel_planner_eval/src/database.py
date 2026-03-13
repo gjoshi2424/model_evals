@@ -150,7 +150,7 @@ def distance_cost(org_city: str, dest_city: str, mode: str) -> int | None:
 
 def cost_enquiry(plan: dict) -> str:
     """Calculate the cost of a one-day sub-plan.
-    
+
     Args:
         plan: One-day plan dict with keys: people_number, transportation, breakfast,
             lunch, dinner, accommodation, current_city.
@@ -169,7 +169,6 @@ def cost_enquiry(plan: dict) -> str:
         org_city, dest_city = extract_from_to(transport)
         if org_city is None or dest_city is None:
             org_city, dest_city = extract_from_to(plan.get("current_city", ""))
-
         if org_city is None or dest_city is None:
             errors.append("The transportation information is not valid, please check.")
         else:
@@ -194,7 +193,7 @@ def cost_enquiry(plan: dict) -> str:
                 else:
                     total_cost += cost * _math.ceil(people / 4)
 
-    def _add_restaurant_cost(meal_field: str, label: str) -> None:
+    def add_restaurant_cost(meal_field: str, label: str) -> None:
         value = plan.get(meal_field, "-") or "-"
         if value == "-":
             return
@@ -210,9 +209,9 @@ def cost_enquiry(plan: dict) -> str:
         else:
             errors.append(f"The {label} information is not valid, please check.")
 
-    _add_restaurant_cost("breakfast", "breakfast")
-    _add_restaurant_cost("lunch", "lunch")
-    _add_restaurant_cost("dinner", "dinner")
+    add_restaurant_cost("breakfast", "breakfast")
+    add_restaurant_cost("lunch", "lunch")
+    add_restaurant_cost("dinner", "dinner")
 
     # --- Accommodation ---
     accommodation = plan.get("accommodation", "-") or "-"
@@ -220,7 +219,10 @@ def cost_enquiry(plan: dict) -> str:
         name, city = get_valid_name_city(accommodation)
         if name != "-" and city != "-":
             df = accommodations()
-            res = df[(df["NAME"] == name) & (df["city"] == city)]
+            res = df[
+                (df["NAME"].astype(str).str.contains(_re.escape(name)))
+                & (df["city"] == city)
+            ]
             if len(res) > 0:
                 max_occ = int(res["maximum occupancy"].values[0])
                 total_cost += float(res["price"].values[0]) * _math.ceil(people / max_occ)

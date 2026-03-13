@@ -1,6 +1,8 @@
 import json
 import re
 from typing import Any
+import ast
+
 
 def extract_before_parenthesis(s: str) -> str:
     """Extract the portion of a string before any parenthetical expression.
@@ -155,9 +157,11 @@ def parse_json_plan(raw: str) -> list[dict[str, Any]] | None:
         return json.loads(json_str)
     except (IndexError, json.JSONDecodeError):
         pass
-
-    # Last resort: eval (the original code uses eval() on the parsed block)
     try:
-        return eval(raw.strip())  # noqa: S307
+        result = ast.literal_eval(raw.strip())
+        if isinstance(result, list):
+            return result
     except Exception:
-        return None
+        pass
+
+    return None

@@ -1,40 +1,40 @@
 """Tests for scorer helper functions in scorer.py."""
 
-from scorer import ScoreExplanation, _all_pass, _build_failure_explanation
+from scorer import ScoreExplanation, all_pass, _build_failure_explanation
 
-def test_all_pass_all_true():
+def testall_pass_all_true():
     results = {"check1": (True, None), "check2": (True, None)}
-    assert _all_pass(results) is True
+    assert all_pass(results) is True
 
 
-def test_all_pass_with_not_applicable():
+def testall_pass_with_not_applicable():
     # None means constraint not applicable — still counts as pass
     results = {"check1": (True, None), "optional": (None, None)}
-    assert _all_pass(results) is True
+    assert all_pass(results) is True
 
 
-def test_all_pass_all_none():
+def testall_pass_all_none():
     results = {"c1": (None, None), "c2": (None, None)}
-    assert _all_pass(results) is True
+    assert all_pass(results) is True
 
 
-def test_all_pass_with_false():
+def testall_pass_with_false():
     results = {"check1": (True, None), "check2": (False, "Something failed")}
-    assert _all_pass(results) is False
+    assert all_pass(results) is False
 
 
-def test_all_pass_all_false():
+def testall_pass_all_false():
     results = {"check1": (False, "reason A"), "check2": (False, "reason B")}
-    assert _all_pass(results) is False
+    assert all_pass(results) is False
 
 
-def test_all_pass_none_input():
+def testall_pass_none_input():
     # None as the whole dict is treated as all-pass (hard constraints skipped)
-    assert _all_pass(None) is True
+    assert all_pass(None) is True
 
 
-def test_all_pass_empty_dict():
-    assert _all_pass({}) is True
+def testall_pass_empty_dict():
+    assert all_pass({}) is True
 
 
 def test_build_failure_explanation_commonsense_failure_with_reason():

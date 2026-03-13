@@ -1,12 +1,12 @@
 import json
 import logging
 
-from inspect_ai.agent import Agent, AgentPrompt, AgentState, react, run
+from inspect_ai.agent import Agent, AgentPrompt, AgentState, AgentSubmit, react, run
 from inspect_ai.model import ChatMessage, ChatMessageTool, ChatMessageUser, get_model
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.tool import Tool, tool
 
-from database import cost_enquiry as _cost_enquiry_fn
+from database import cost_enquiry
 from prompts import (
     REACT_AGENT_SYSTEM_PROMPT,
     REFLECT_INSTRUCTION,
@@ -16,7 +16,7 @@ from prompts import (
 logger = logging.getLogger(__name__)
 
 
-def _msg_text(m: ChatMessage) -> str:
+def msg_text(m: ChatMessage) -> str:
     """Safely extract text from any ChatMessage subtype."""
     if isinstance(m.content, str):
         return m.content
@@ -55,13 +55,13 @@ def cost_enquiry_tool() -> Tool:
             plan = json.loads(plan_json)
         except json.JSONDecodeError:
             return "Invalid JSON. Please provide a valid JSON string for the plan."
-        return _cost_enquiry_fn(plan)
+        return cost_enquiry(plan)
 
     return execute
 
 
 
-def _make_react_agent(system_prompt: str) -> object:
+def make_react_agent(system_prompt: str) -> object:
     """Create a react() agent with the given system prompt.
 
     Args:
@@ -85,6 +85,7 @@ def _make_react_agent(system_prompt: str) -> object:
         ),
         tools=[cost_enquiry_tool()],
         on_continue=on_continue,
+        submit=AgentSubmit(keep_in_messages=True),
     )
 
 
@@ -96,8 +97,8 @@ def sole_planning() -> Solver:
         Solver that generates a single completion for the planner prompt.
     """
 
-    async def solve(state: TaskState, generate_fn: Generate) -> TaskState:
-        return await generate_fn(state)
+    async def solve(state: TaskState, generate: Generate) -> TaskState:
+        return await generate(state)
 
     return solve
 
@@ -109,7 +110,7 @@ def sole_planning_react() -> Agent:
     Returns:
         Agent implementing the ReAct planning strategy.
     """
-    return _make_react_agent(REACT_AGENT_SYSTEM_PROMPT)
+    return make_react_agent(REACT_AGENT_SYSTEM_PROMPT)
 
 
 
@@ -121,7 +122,7 @@ def sole_planning_reflexion() -> Solver:
         Solver implementing the Reflexion planning strategy.
     """
 
-    async def solve(state: TaskState, generate_fn: Generate) -> TaskState:
+    async def solve(state: TaskState, generate: Generate) -> TaskState:
         text: str = state.metadata["reference_information"]
         query: str = state.metadata["query"]
         user_input = state.input.text
@@ -135,7 +136,7 @@ def sole_planning_reflexion() -> Solver:
             else:
                 system_prompt = REACT_AGENT_SYSTEM_PROMPT
 
-            agent = _make_react_agent(system_prompt)
+            agent = make_react_agent(system_prompt)
             agent_state = await run(agent, user_input)
             state.output = agent_state.output
 
@@ -156,7 +157,7 @@ def sole_planning_reflexion() -> Solver:
 
             # Reflexion step: ask the model to diagnose the failure
             history = "\n".join(
-                f"[{m.role}] {_msg_text(m)}" for m in agent_state.messages
+                f"[{m.role}] {msg_text(m)}" for m in agent_state.messages
             )
             reflect_prompt = REFLECT_INSTRUCTION.format(
                 text=text,

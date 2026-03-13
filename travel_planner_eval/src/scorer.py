@@ -99,9 +99,9 @@ def travel_planner_scorer(
 
         # Determine final pass/fail
         commonsense_pass = all_pass(commonsense_results)
-        hard_pass = all_pass(hard_results) if hard_results is not None else True
+        hard_pass = all_pass(hard_results) if hard_results is not None else None
 
-        final_pass = commonsense_pass and hard_pass
+        final_pass = commonsense_pass and (hard_pass is not False)
 
         # Build flat metadata for Score
         constraint_metadata: dict[str, Any] = {

@@ -5,7 +5,7 @@ from inspect_ai.agent import Agent
 from inspect_ai.solver import Solver
 
 from dataset import Split, travel_planner_dataset
-from prompts import COT_PLANNER_INSTRUCTION, PLANNER_INSTRUCTION, REACT_USER_TEMPLATE
+from prompts import COT_PLANNER_INSTRUCTION, DIRECT_PLANNER_INSTRUCTION, REACT_USER_TEMPLATE
 from scorer import travel_planner_scorer
 from solver import (
     sole_planning,
@@ -42,7 +42,7 @@ def travel_planner(
         "reflexion": sole_planning_reflexion(),
     }
     instructions_dict: dict[Strategy, str] = {
-        "direct": PLANNER_INSTRUCTION,
+        "direct": DIRECT_PLANNER_INSTRUCTION,
         "cot": COT_PLANNER_INSTRUCTION,
         "react": REACT_USER_TEMPLATE,
         "reflexion": REACT_USER_TEMPLATE,
