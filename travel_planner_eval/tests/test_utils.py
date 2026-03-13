@@ -12,6 +12,7 @@ from utils import (
     transportation_match,
 )
 
+
 def test_extract_before_parenthesis_with_state():
     assert extract_before_parenthesis("Chicago (IL)") == "Chicago "
 
@@ -28,6 +29,7 @@ def test_extract_before_parenthesis_multiple_parens():
     # Only the first parenthetical should be stripped
     result = extract_before_parenthesis("Salt Lake City (UT)(extra)")
     assert result == "Salt Lake City "
+
 
 def test_get_valid_name_city_standard():
     name, city = get_valid_name_city("The Purple Pig, Chicago(IL)")
@@ -52,6 +54,7 @@ def test_get_valid_name_city_strips_whitespace():
     assert name == "Nobu"
     assert city == "Malibu"
 
+
 def test_count_consecutive_values_basic():
     result = count_consecutive_values(["A", "A", "B", "A"])
     assert result == [("A", 2), ("B", 1), ("A", 1)]
@@ -71,6 +74,7 @@ def test_count_consecutive_values_empty():
 
 def test_count_consecutive_values_single_element():
     assert count_consecutive_values(["A"]) == [("A", 1)]
+
 
 def test_extract_from_to_standard():
     org, dest = extract_from_to("from New York to Los Angeles")
@@ -96,6 +100,7 @@ def test_extract_from_to_case_sensitive():
     assert org is None
     assert dest is None
 
+
 @pytest.mark.parametrize(
     "text, expected",
     [
@@ -109,6 +114,7 @@ def test_extract_from_to_case_sensitive():
 )
 def test_transportation_match(text, expected):
     assert transportation_match(text) == expected
+
 
 def test_is_valid_city_sequence_valid_round_trip():
     # origin → dest1 (stays 2 days) → origin = valid
@@ -137,6 +143,7 @@ def test_is_valid_city_sequence_backtracking_invalid():
 def test_is_valid_city_sequence_repeated_dest_valid():
     # Two destination cities each with 2 nights
     assert is_valid_city_sequence(["NYC", "LA", "LA", "CHI", "CHI", "NYC"]) is True
+
 
 def test_parse_json_plan_code_block():
     raw = '```json\n[{"day": 1, "city": "NYC"}]\n```'

@@ -78,5 +78,3 @@ def record_to_sample(record: dict[str, Any], planner_instruction: str) -> Sample
             "date": record["date"],
         },
     )
-
-

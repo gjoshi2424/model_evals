@@ -2,6 +2,7 @@
 
 from scorer import ScoreExplanation, all_pass, _build_failure_explanation
 
+
 def testall_pass_all_true():
     results = {"check1": (True, None), "check2": (True, None)}
     assert all_pass(results) is True

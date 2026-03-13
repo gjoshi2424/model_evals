@@ -9,6 +9,7 @@ from utils import (
     get_valid_name_city,
 )
 
+
 def is_valid_transportation(
     question: dict[str, Any], tested_data: list[dict[str, Any]]
 ) -> tuple[bool | None, str | None]:

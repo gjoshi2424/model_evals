@@ -38,17 +38,31 @@ def _patch_all_databases(city_state=None):
     Use this in any test that calls evaluation() or is_valid_information_in_sandbox()
     without real CSV data, so that all database paths are hermetically isolated.
     """
-    empty_restaurants = pd.DataFrame(columns=["Name", "City", "Average Cost", "Cuisines"])
-    empty_flights = pd.DataFrame(columns=["Flight Number", "OriginCityName", "DestCityName", "Price"])
+    empty_restaurants = pd.DataFrame(
+        columns=["Name", "City", "Average Cost", "Cuisines"]
+    )
+    empty_flights = pd.DataFrame(
+        columns=["Flight Number", "OriginCityName", "DestCityName", "Price"]
+    )
     empty_attractions = pd.DataFrame(columns=["Name", "City"])
     empty_accommodations = pd.DataFrame(
-        columns=["NAME", "city", "minimum nights", "price", "maximum occupancy", "house_rules", "room type"]
+        columns=[
+            "NAME",
+            "city",
+            "minimum nights",
+            "price",
+            "maximum occupancy",
+            "house_rules",
+            "room type",
+        ]
     )
-    with patch("database.city_state_map", return_value=city_state or _CITY_STATE), \
-         patch("database.flights", return_value=empty_flights), \
-         patch("database.restaurants", return_value=empty_restaurants), \
-         patch("database.attractions", return_value=empty_attractions), \
-         patch("database.accommodations", return_value=empty_accommodations):
+    with (
+        patch("database.city_state_map", return_value=city_state or _CITY_STATE),
+        patch("database.flights", return_value=empty_flights),
+        patch("database.restaurants", return_value=empty_restaurants),
+        patch("database.attractions", return_value=empty_attractions),
+        patch("database.accommodations", return_value=empty_accommodations),
+    ):
         yield
 
 
@@ -500,7 +514,9 @@ def test_not_absent_missing_transportation_key():
 
 
 def test_evaluation_returns_all_check_keys():
-    question = _question(org="New York", dest="California", days=3, visiting_city_number=1)
+    question = _question(
+        org="New York", dest="California", days=3, visiting_city_number=1
+    )
     data = [
         _day("from New York to Los Angeles"),
         _day("Los Angeles"),
@@ -523,7 +539,9 @@ def test_evaluation_returns_all_check_keys():
 
 
 def test_evaluation_returns_tuples():
-    question = _question(org="New York", dest="California", days=1, visiting_city_number=1)
+    question = _question(
+        org="New York", dest="California", days=1, visiting_city_number=1
+    )
     data = [_day("from New York to Los Angeles")]
     with _patch_all_databases():
         results = evaluation(question, data)

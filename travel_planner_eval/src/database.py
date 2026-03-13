@@ -91,7 +91,6 @@ def distance_matrix() -> pd.DataFrame:
     return pd.read_csv(_DB_DIR / "googleDistanceMatrix" / "distance.csv")
 
 
-
 @functools.lru_cache(maxsize=1)
 def city_state_map() -> dict[str, str]:
     """Return a mapping of city name → US state name.
@@ -174,7 +173,9 @@ def cost_enquiry(plan: dict) -> str:
         else:
             if "flight number" in transport.lower():
                 try:
-                    flight_number = transport.split("Flight Number: ")[1].split(",")[0].strip()
+                    flight_number = (
+                        transport.split("Flight Number: ")[1].split(",")[0].strip()
+                    )
                     df = flights()
                     res = df[df["Flight Number"] == flight_number]
                     if len(res) > 0:
@@ -187,7 +188,9 @@ def cost_enquiry(plan: dict) -> str:
                 mode = "self-driving" if "self-driving" in transport.lower() else "taxi"
                 cost = distance_cost(org_city, dest_city, mode)
                 if cost is None:
-                    errors.append("The transportation information is not valid, please check.")
+                    errors.append(
+                        "The transportation information is not valid, please check."
+                    )
                 elif mode == "self-driving":
                     total_cost += cost * _math.ceil(people / 5)
                 else:
@@ -202,7 +205,10 @@ def cost_enquiry(plan: dict) -> str:
         if name == "-" or city == "-":
             return
         df = restaurants()
-        res = df[(df["Name"].astype(str).str.contains(_re.escape(name))) & (df["City"] == city)]
+        res = df[
+            (df["Name"].astype(str).str.contains(_re.escape(name)))
+            & (df["City"] == city)
+        ]
         if len(res) > 0:
             nonlocal total_cost
             total_cost += float(res["Average Cost"].values[0]) * people
@@ -225,9 +231,13 @@ def cost_enquiry(plan: dict) -> str:
             ]
             if len(res) > 0:
                 max_occ = int(res["maximum occupancy"].values[0])
-                total_cost += float(res["price"].values[0]) * _math.ceil(people / max_occ)
+                total_cost += float(res["price"].values[0]) * _math.ceil(
+                    people / max_occ
+                )
             else:
-                errors.append("The accommodation information is not valid, please check.")
+                errors.append(
+                    "The accommodation information is not valid, please check."
+                )
 
     if not errors:
         return f"The cost of your plan is {total_cost} dollars."

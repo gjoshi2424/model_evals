@@ -34,7 +34,6 @@ MAX_STEPS: int = 30
 CONTINUE_MESSAGE = "Please proceed to the next step using your best judgement."
 
 
-
 @tool
 def cost_enquiry_tool() -> Tool:
     """Tool that calculates the cost of a one-day travel sub-plan."""
@@ -60,7 +59,6 @@ def cost_enquiry_tool() -> Tool:
     return execute
 
 
-
 def make_react_agent(system_prompt: str) -> object:
     """Create a react() agent with the given system prompt.
 
@@ -80,9 +78,7 @@ def make_react_agent(system_prompt: str) -> object:
         return CONTINUE_MESSAGE
 
     return react(
-        prompt=AgentPrompt(
-            instructions=system_prompt
-        ),
+        prompt=AgentPrompt(instructions=system_prompt),
         tools=[cost_enquiry_tool()],
         on_continue=on_continue,
         submit=AgentSubmit(keep_in_messages=True),
@@ -103,7 +99,6 @@ def sole_planning() -> Solver:
     return solve
 
 
-
 def sole_planning_react() -> Agent:
     """Sole-planning solver using the ReAct strategy via inspect_ai.agent.react().
 
@@ -111,7 +106,6 @@ def sole_planning_react() -> Agent:
         Agent implementing the ReAct planning strategy.
     """
     return make_react_agent(REACT_AGENT_SYSTEM_PROMPT)
-
 
 
 @solver

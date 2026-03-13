@@ -47,6 +47,7 @@ def test_sample_input_uses_cot_instruction():
     assert _BASE_RECORD["query"] in sample.input
     assert _BASE_RECORD["reference_information"] in sample.input
 
+
 def test_sample_metadata_org(base_record):
     sample = record_to_sample(base_record, PLANNER_INSTRUCTION)
     assert sample.metadata["org"] == "New York"
@@ -96,6 +97,7 @@ def test_sample_metadata_contains_raw_fields(base_record):
     sample = record_to_sample(base_record, PLANNER_INSTRUCTION)
     assert "reference_information" in sample.metadata
     assert "query" in sample.metadata
+
 
 def test_record_local_constraint_as_string_is_parsed(base_record):
     base_record["local_constraint"] = (

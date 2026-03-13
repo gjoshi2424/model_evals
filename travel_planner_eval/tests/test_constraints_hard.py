@@ -18,6 +18,7 @@ from constraints.hard import (
 
 # Shared helpers
 
+
 def _question(
     org: str = "New York",
     days: int = 3,
@@ -109,6 +110,7 @@ def test_valid_transportation_dash_entries_ignored():
     data = [_day(transportation="-"), _day(transportation="-")]
     result, reason = is_valid_transportation(question, data)
     assert result is True
+
 
 def test_get_total_cost_all_dashes_is_zero():
     question = _question(people_number=2, days=2)
@@ -410,6 +412,7 @@ def test_valid_room_type_not_shared_room_violated():
     with patch("database.accommodations", return_value=mock_acc_df):
         result, reason = is_valid_room_type(question, data)
     assert result is False
+
 
 def test_evaluation_returns_all_check_keys():
     question = _question()
