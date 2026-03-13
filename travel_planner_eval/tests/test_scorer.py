@@ -1,6 +1,6 @@
 """Tests for scorer helper functions in scorer.py."""
 
-from scorer import ScoreExplanation, all_pass, _build_failure_explanation
+from scorer import ScoreExplanation, all_pass, build_failure_explanation
 
 
 def testall_pass_all_true():
@@ -38,12 +38,12 @@ def testall_pass_empty_dict():
     assert all_pass({}) is True
 
 
-def test_build_failure_explanation_commonsense_failure_with_reason():
+def testbuild_failure_explanation_commonsense_failure_with_reason():
     commonsense = {
         "is_valid_days": (False, "The number of days should be 3."),
         "is_valid_restaurants": (True, None),
     }
-    explanation = _build_failure_explanation(commonsense, None)
+    explanation = build_failure_explanation(commonsense)
     assert ScoreExplanation.CONSTRAINT_FAIL in explanation
     assert "is_valid_days" in explanation
     assert "The number of days should be 3." in explanation
@@ -51,44 +51,43 @@ def test_build_failure_explanation_commonsense_failure_with_reason():
     assert "is_valid_restaurants" not in explanation
 
 
-def test_build_failure_explanation_hard_failure():
+def testbuild_failure_explanation_hard_failure():
+    # Hard failures no longer appear in the explanation (metadata-only).
     commonsense = {"is_valid_days": (True, None)}
-    hard = {"valid_cost": (False, None)}
-    explanation = _build_failure_explanation(commonsense, hard)
-    assert "[hard]" in explanation
-    assert "valid_cost" in explanation
+    explanation = build_failure_explanation(commonsense)
+    assert "[hard]" not in explanation
+    assert "valid_cost" not in explanation
 
 
-def test_build_failure_explanation_failure_without_reason():
+def testbuild_failure_explanation_failure_without_reason():
     commonsense = {"is_valid_days": (False, None)}
-    explanation = _build_failure_explanation(commonsense, None)
+    explanation = build_failure_explanation(commonsense)
     assert "is_valid_days" in explanation
     # Should not crash when reason is None
 
 
-def test_build_failure_explanation_multiple_failures():
+def testbuild_failure_explanation_multiple_failures():
+    # Hard failures are excluded from the explanation (metadata-only).
     commonsense = {
         "is_valid_days": (False, "Wrong day count."),
         "is_valid_attractions": (False, "Repeated attraction."),
     }
-    hard = {"valid_cost": (False, "Over budget.")}
-    explanation = _build_failure_explanation(commonsense, hard)
+    explanation = build_failure_explanation(commonsense)
     assert "is_valid_days" in explanation
     assert "is_valid_attractions" in explanation
-    assert "valid_cost" in explanation
+    assert "valid_cost" not in explanation
     assert "[commonsense]" in explanation
-    assert "[hard]" in explanation
+    assert "[hard]" not in explanation
 
 
-def test_build_failure_explanation_no_failures_returns_prefix():
+def testbuild_failure_explanation_no_failures_returns_prefix():
     # All checks pass — no failures listed, just the prefix
     commonsense = {"is_valid_days": (True, None)}
-    explanation = _build_failure_explanation(commonsense, {})
+    explanation = build_failure_explanation(commonsense)
     assert ScoreExplanation.CONSTRAINT_FAIL in explanation
 
 
-def test_build_failure_explanation_hard_none_ignored():
+def testbuild_failure_explanation_hard_none_ignored():
     commonsense = {"is_valid_days": (False, "Bad.")}
-    # hard=None means hard constraints were not evaluated — should be ignored
-    explanation = _build_failure_explanation(commonsense, None)
+    explanation = build_failure_explanation(commonsense)
     assert "[hard]" not in explanation

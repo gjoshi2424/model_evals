@@ -26,8 +26,8 @@ class ScoreExplanation:
 
     EMPTY_PLAN = "Model produced an empty or whitespace-only plan"
     PARSE_FAILED = "LLM-based plan parsing failed; could not extract JSON"
-    CONSTRAINT_FAIL = "One or more constraint checks failed"
-    ALL_PASS = "All available constraint checks passed"
+    CONSTRAINT_FAIL = "One or more commonsense constraint checks failed"
+    ALL_PASS = "All commonsense constraint checks passed"
 
 
 @scorer(metrics=[accuracy(), stderr()])
@@ -86,8 +86,8 @@ def travel_planner_scorer(
                 },
             )
 
-        # Step 2: Evaluate constraints
-        # (hard constraints are only evaluated if the plan is not absent).
+        # Step 2: Evaluate constraints.
+        # Hard constraints are only evaluated if the plan is not absent
         query_data: dict[str, Any] = state.metadata
         commonsense_results = commonsense.evaluation(query_data, parsed_plan)
         not_absent_pass = commonsense_results["is_not_absent"][0]
@@ -97,11 +97,8 @@ def travel_planner_scorer(
         else:
             hard_results = None
 
-        # Determine final pass/fail
         commonsense_pass = all_pass(commonsense_results)
         hard_pass = all_pass(hard_results) if hard_results is not None else None
-
-        final_pass = commonsense_pass and (hard_pass is not False)
 
         # Build flat metadata for Score
         constraint_metadata: dict[str, Any] = {
@@ -109,7 +106,6 @@ def travel_planner_scorer(
             "parse_failed": False,
             "commonsense_pass": commonsense_pass,
             "hard_pass": hard_pass,
-            "final_pass": final_pass,
         }
 
         # Store per-check result: True/False/None and failure reason
@@ -126,12 +122,12 @@ def travel_planner_scorer(
 
         explanation = (
             ScoreExplanation.ALL_PASS
-            if final_pass
-            else build_failure_explanation(commonsense_results, hard_results)
+            if commonsense_pass
+            else build_failure_explanation(commonsense_results)
         )
 
         return Score(
-            value=CORRECT if final_pass else INCORRECT,
+            value=CORRECT if commonsense_pass else INCORRECT,
             answer=plan_text,
             explanation=explanation,
             metadata=constraint_metadata,
@@ -156,18 +152,15 @@ def all_pass(results: dict[str, tuple] | None) -> bool:
 
 def build_failure_explanation(
     commonsense_results: dict[str, tuple],
-    hard_results: dict[str, tuple] | None,
 ) -> str:
-    """Build an explanation of which constraints failed.
+    """Build an explanation of which commonsense constraints failed.
 
     Args:
         commonsense_results: Dict mapping commonsense check name to
             ``(result, reason)`` tuples.
-        hard_results: Dict mapping hard check name to ``(result, reason)`` tuples,
-            or None if hard constraints were not evaluated.
 
     Returns:
-        Single-line string listing every failed check and its reason.
+        Single-line string listing every failed commonsense check and its reason.
     """
     failures: list[str] = []
 
@@ -177,13 +170,5 @@ def build_failure_explanation(
             if reason:
                 msg += f": {reason}"
             failures.append(msg)
-
-    if hard_results:
-        for check_name, (result, reason) in hard_results.items():
-            if result is False:
-                msg = f"[hard] {check_name}"
-                if reason:
-                    msg += f": {reason}"
-                failures.append(msg)
 
     return ScoreExplanation.CONSTRAINT_FAIL + " — " + "; ".join(failures)

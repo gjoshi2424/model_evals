@@ -1,7 +1,6 @@
 from typing import Literal
 
 from inspect_ai import Task, task
-from inspect_ai.agent import Agent
 from inspect_ai.solver import Solver
 
 from dataset import Split, travel_planner_dataset
@@ -39,7 +38,7 @@ def travel_planner(
     Returns:
         Configured Inspect Task.
     """
-    solvers_dict: dict[Strategy, Solver | Agent] = {
+    solvers_dict: dict[Strategy, Solver] = {
         "direct": sole_planning(),
         "cot": sole_planning(),
         "react": sole_planning_react(),

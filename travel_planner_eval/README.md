@@ -65,10 +65,10 @@ uv run inspect eval src/ \
 
 The dataset is loaded from [osunlp/TravelPlanner](https://huggingface.co/datasets/osunlp/TravelPlanner) on HuggingFace.
 
-| Split      | Samples | Levels               |
-|------------|---------|----------------------|
-| train      | 45      | easy / medium / hard |
-| validation | 180     | easy / medium / hard |
+| Split      | Samples |
+|------------|---------|
+| train      | 45      |
+| validation | 180     |
 
 The **test split** exists on HuggingFace but is not supported here. It omits the columns required for scoring (`people_number`, `budget`, `visiting_city_number`, `local_constraint`, `annotated_plan`)
 
@@ -91,6 +91,10 @@ Scoring replicates the original paper's two-step process:
 | `is_valid_attractions` | No attraction visited more than once |
 | `is_valid_transportation` | No conflicting transport modes (e.g. flight + self-driving) |
 | `is_valid_information_in_current_city` | Meals/attractions/accommodation match the day's city |
+| `is_valid_information_in_sandbox` | All named entities (restaurants, flights, etc.) exist in the database |
+| `is_valid_accommodation` | Each accommodation meets the minimum nights requirement |
+| `is_valid_visiting_city_number` | Number of cities visited matches the trip duration |
+| `is_valid_days` | Number of days in the plan matches the query |
 | `is_not_absent` | All required fields present and ≥50% filled |
 
 ### Hard Constraints
@@ -98,26 +102,51 @@ Scoring replicates the original paper's two-step process:
 | Check | Description |
 |---|---|
 | `valid_transportation` | Transport mode satisfies the user's constraint (e.g. "no flight") |
+| `valid_cost` | Total plan cost is within the user's budget |
+| `valid_cuisine` | All requested cuisine types appear at least once in the plan |
+| `valid_room_rule` | Accommodation house rules satisfy the user's constraint |
+| `valid_room_type` | Accommodation room type matches the user's requirement |
 
-The primary metric is **Commonsense Macro Pass Rate**: a sample passes if all implemented commonsense constraint checks pass, and the macro pass rate is the fraction of samples that pass.
+Accuracy score is based on the common sense macro score. However, the hard constraint score will get logged in the scoring metadata as well.
 
 ## Evaluation Report
 
-**Evaluation Version:** 1-A
-
 | Model | Provider | Strategy | Split | Commonsense Macro Pass Rate | Stderr | Samples |
 | ----- | -------- | -------- | ----- | --------------------------- | ------ | ------- |
-| gpt-3.5-turbo-1106 | OpenAI | direct | validation | 0.050 | 0.050 | 20 |
+| gpt-3.5-turbo-1106 | OpenAI | direct | validation | 0.10 | 0.690 | 20 |
+| gpt-3.5-turbo-1106 | OpenAI | cot | validation | 0.050 | 0.050 | 20 |
+| gpt-3.5-turbo-1106 | OpenAI | react | validation | 0.100 | 0.100 | 10 |
+| gpt-3.5-turbo-1106 | OpenAI | reflexion | validation | 0.200 | .133 | 10 |
+| gemini-3-flash-preview | Google | direct | validation | 0.700 | 0.105 | 20 |
+| gemini-3-flash-preview | Google | cot | validation | 0.800 | 0.092 | 20 |
+| gemini-3-flash-preview | Google | react | validation | 0.600 | 0.245 | 5 |
+| gemini-3-flash-preview | Google | reflexion | validation | 0.800 | 0.200 | 5 |
 
 **Notes:**
 
-- More results to be added.
 - Human expert baseline from the paper is 100% commonsense pass rate and 67.7% final pass rate (all constraints).
+- gpt-3.5-turbo-1106 can be compared against the [leaderboard](https://huggingface.co/spaces/osunlp/TravelPlannerLeaderboard)
+- gemini-3-flash-preview was added for comparing to a later model
+- Sample size was limited due to cost constraints
 
 **Evaluation Commands:**
 
 ```bash
 uv run inspect eval src/ --model openai/gpt-3.5-turbo-1106 --limit 20 -T split=validation
+
+uv run inspect eval src/ --model openai/gpt-3.5-turbo-1106 --limit 20 -T split=validation -T strategy=cot
+
+uv run inspect eval src/ --model openai/gpt-3.5-turbo-1106 --limit 10 -T split=validation -T strategy=react
+
+uv run inspect eval src/ --model openai/gpt-3.5-turbo-1106 --limit 10 -T split=validation -T strategy=reflexion
+
+uv run inspect eval src/ --model  google/gemini-3-flash-preview --limit 20 -T split=validation 
+
+uv run inspect eval src/ --model  google/gemini-3-flash-preview --limit 20 -T split=validation -T strategy=cot 
+
+uv run inspect eval src/ --model  google/gemini-3-flash-preview --limit 5 -T split=validation -T strategy=react
+
+uv run inspect eval src/ --model  google/gemini-3-flash-preview --limit 5 -T split=validation -T strategy=reflexion
 ```
 
 ## Differences from Original Implementation

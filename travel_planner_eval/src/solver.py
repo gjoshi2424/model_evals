@@ -99,13 +99,24 @@ def sole_planning() -> Solver:
     return solve
 
 
-def sole_planning_react() -> Agent:
+@solver
+def sole_planning_react() -> Solver:
     """Sole-planning solver using the ReAct strategy via inspect_ai.agent.react().
 
+    A new agent is created per sample so the step counter is not shared
+    across samples.
+
     Returns:
-        Agent implementing the ReAct planning strategy.
+        Solver implementing the ReAct planning strategy.
     """
-    return make_react_agent(REACT_AGENT_SYSTEM_PROMPT)
+
+    async def solve(state: TaskState, generate: Generate) -> TaskState:
+        agent = make_react_agent(REACT_AGENT_SYSTEM_PROMPT)
+        agent_state = await run(agent, state.input)
+        state.output = agent_state.output
+        return state
+
+    return solve
 
 
 @solver
@@ -119,7 +130,7 @@ def sole_planning_reflexion() -> Solver:
     async def solve(state: TaskState, generate: Generate) -> TaskState:
         text: str = state.metadata["reference_information"]
         query: str = state.metadata["query"]
-        user_input = state.input.text
+        user_input = state.input
         reflections: list[str] = []
 
         for retry in range(REFLEXION_MAX_RETRIES):
