@@ -12,6 +12,8 @@ Install the package and its dependencies from the `travel_planner_eval/` directo
 uv sync
 ```
 
+Download the [database](https://drive.google.com/file/d/1pF1Sw6pBmq2sFkJvm-LzJOqrmfWoQgxE/view?usp=drive_link) and unzip it to the `src/` directory (i.e., `travel_planner_eval/src/database/`).
+
 ### Running evaluations
 
 ```bash
@@ -108,7 +110,7 @@ Accuracy score is based on the common sense macro score. However, the hard const
 | gpt-3.5-turbo-1106 | OpenAI | direct | validation | 0.10 | 0.690 | 20 |
 | gpt-3.5-turbo-1106 | OpenAI | cot | validation | 0.050 | 0.050 | 20 |
 | gpt-3.5-turbo-1106 | OpenAI | react | validation | 0.100 | 0.100 | 10 |
-| gpt-3.5-turbo-1106 | OpenAI | reflexion | validation | 0.200 | .133 | 10 |
+| gpt-3.5-turbo-1106 | OpenAI | reflexion | validation | 0.000 | .000 | 10 |
 | gemini-3-flash-preview | Google | direct | validation | 0.700 | 0.105 | 20 |
 | gemini-3-flash-preview | Google | cot | validation | 0.800 | 0.092 | 20 |
 | gemini-3-flash-preview | Google | react | validation | 0.600 | 0.245 | 5 |
