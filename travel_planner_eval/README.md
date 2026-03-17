@@ -110,7 +110,7 @@ Accuracy score is based on the common sense macro score. However, the hard const
 | gpt-3.5-turbo-1106 | OpenAI | direct | validation | 0.10 | 0.690 | 20 |
 | gpt-3.5-turbo-1106 | OpenAI | cot | validation | 0.050 | 0.050 | 20 |
 | gpt-3.5-turbo-1106 | OpenAI | react | validation | 0.100 | 0.100 | 10 |
-| gpt-3.5-turbo-1106 | OpenAI | reflexion | validation | 0.000 | .000 | 10 |
+| gpt-3.5-turbo-1106 | OpenAI | reflexion | validation | 0.200 | .133 | 10 |
 | gemini-3-flash-preview | Google | direct | validation | 0.700 | 0.105 | 20 |
 | gemini-3-flash-preview | Google | cot | validation | 0.800 | 0.092 | 20 |
 | gemini-3-flash-preview | Google | react | validation | 0.600 | 0.245 | 5 |
@@ -122,6 +122,7 @@ Accuracy score is based on the common sense macro score. However, the hard const
 - gpt-3.5-turbo-1106 can be compared against the [leaderboard](https://huggingface.co/spaces/osunlp/TravelPlannerLeaderboard)
 - gemini-3-flash-preview was added for comparing to a later model
 - Sample size was limited due to cost constraints
+- In the reflexion agent case, the tool calls rarely failed three times in a row, so the reflection phase rarely triggered. This may be due to using later models.
 
 **Evaluation Commands:**
 
