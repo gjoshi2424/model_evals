@@ -173,10 +173,10 @@ def sole_planning_reflexion() -> Solver:
         reflections: list[str] = []
 
         for retry in range(REFLEXION_MAX_RETRIES):
-            # Build system prompt: base instructions + accumulated reflections
+            # Build system prompt: base instructions + example, then reflections appended
             if reflections:
                 reflection_block = REFLECTION_HEADER + "\n".join(reflections)
-                system_prompt = reflection_block + "\n\n" + REACT_AGENT_SYSTEM_PROMPT
+                system_prompt = REACT_AGENT_SYSTEM_PROMPT + "\n\n" + reflection_block
             else:
                 system_prompt = REACT_AGENT_SYSTEM_PROMPT
 
