@@ -11,7 +11,6 @@ from utils import (
     transportation_match,
 )
 
-# Days threshold above which cities must belong to the destination state
 MIN_DAYS_FOR_STATE_CHECK = 3
 
 

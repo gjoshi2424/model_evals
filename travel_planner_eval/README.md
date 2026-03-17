@@ -18,14 +18,6 @@ uv sync
 uv run inspect eval src/ --model openai/gpt-4o
 ```
 
-You can also import the task as a normal Python object:
-
-```python
-from inspect_ai import eval
-from travel_planner_eval import travel_planner
-eval(travel_planner())
-```
-
 After running evaluations, view logs with:
 
 ```bash

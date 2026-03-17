@@ -1,6 +1,4 @@
 """Tests for constraints/hard.py constraint checkers.
-
-Database calls are patched at the module level so tests run without CSV data files.
 """
 
 from unittest.mock import patch
@@ -16,10 +14,7 @@ from constraints.hard import (
     is_valid_transportation,
 )
 
-# Shared helpers
-
-
-def _question(
+def question_dict(
     org: str = "New York",
     days: int = 3,
     people_number: int = 2,
@@ -43,7 +38,7 @@ def _question(
     }
 
 
-def _day(
+def day_dict(
     transportation: str = "-",
     current_city: str = "Los Angeles",
     breakfast: str = "-",
@@ -62,68 +57,68 @@ def _day(
 
 
 def test_valid_transportation_no_constraint():
-    question = _question(transportation=None)
-    data = [_day(transportation="Flight Number: AA100, from NYC to LA")]
+    question = question_dict(transportation=None)
+    data = [day_dict(transportation="Flight Number: AA100, from NYC to LA")]
     result, reason = is_valid_transportation(question, data)
     assert result is None
     assert reason is None
 
 
 def test_valid_transportation_no_flight_passes():
-    question = _question(transportation="no flight")
+    question = question_dict(transportation="no flight")
     data = [
-        _day(transportation="Self-driving from New York to Los Angeles"),
-        _day(transportation="Taxi from Los Angeles to New York"),
+        day_dict(transportation="Self-driving from New York to Los Angeles"),
+        day_dict(transportation="Taxi from Los Angeles to New York"),
     ]
     result, reason = is_valid_transportation(question, data)
     assert result is True
 
 
 def test_valid_transportation_no_flight_violated():
-    question = _question(transportation="no flight")
-    data = [_day(transportation="Flight Number: AA100, from New York to Los Angeles")]
+    question = question_dict(transportation="no flight")
+    data = [day_dict(transportation="Flight Number: AA100, from New York to Los Angeles")]
     result, reason = is_valid_transportation(question, data)
     assert result is False
     assert "no flight" in reason
 
 
 def test_valid_transportation_no_self_driving_passes():
-    question = _question(transportation="no self-driving")
+    question = question_dict(transportation="no self-driving")
     data = [
-        _day(transportation="Flight Number: AA100, from NYC to LA"),
-        _day(transportation="Taxi from LA to NYC"),
+        day_dict(transportation="Flight Number: AA100, from NYC to LA"),
+        day_dict(transportation="Taxi from LA to NYC"),
     ]
     result, reason = is_valid_transportation(question, data)
     assert result is True
 
 
 def test_valid_transportation_no_self_driving_violated():
-    question = _question(transportation="no self-driving")
-    data = [_day(transportation="Self-driving from New York to Los Angeles")]
+    question = question_dict(transportation="no self-driving")
+    data = [day_dict(transportation="Self-driving from New York to Los Angeles")]
     result, reason = is_valid_transportation(question, data)
     assert result is False
     assert "self-driving" in reason.lower()
 
 
 def test_valid_transportation_dash_entries_ignored():
-    question = _question(transportation="no flight")
-    data = [_day(transportation="-"), _day(transportation="-")]
+    question = question_dict(transportation="no flight")
+    data = [day_dict(transportation="-"), day_dict(transportation="-")]
     result, reason = is_valid_transportation(question, data)
     assert result is True
 
 
 def test_get_total_cost_all_dashes_is_zero():
-    question = _question(people_number=2, days=2)
-    data = [_day(), _day()]
+    question = question_dict(people_number=2, days=2)
+    data = [day_dict(), day_dict()]
     # No database calls needed — all '-' entries are skipped
     result = get_total_cost(question, data)
     assert result == 0.0
 
 
 def test_get_total_cost_with_flight():
-    question = _question(people_number=2, days=1)
+    question = question_dict(people_number=2, days=1)
     data = [
-        _day(
+        day_dict(
             transportation="Flight Number: AA100, from New York to Los Angeles",
             current_city="from New York to Los Angeles",
         )
@@ -143,9 +138,9 @@ def test_get_total_cost_with_flight():
 
 
 def test_get_total_cost_with_self_driving():
-    question = _question(people_number=4, days=1)
+    question = question_dict(people_number=4, days=1)
     data = [
-        _day(
+        day_dict(
             transportation="Self-driving from New York to Los Angeles",
             current_city="from New York to Los Angeles",
         )
@@ -158,9 +153,9 @@ def test_get_total_cost_with_self_driving():
 
 
 def test_get_total_cost_with_taxi():
-    question = _question(people_number=4, days=1)
+    question = question_dict(people_number=4, days=1)
     data = [
-        _day(
+        day_dict(
             transportation="Taxi from New York to Los Angeles",
             current_city="from New York to Los Angeles",
         )
@@ -172,8 +167,8 @@ def test_get_total_cost_with_taxi():
 
 
 def test_get_total_cost_with_restaurant():
-    question = _question(people_number=2, days=1)
-    data = [_day(breakfast="Nobu, Los Angeles(CA)")]
+    question = question_dict(people_number=2, days=1)
+    data = [day_dict(breakfast="Nobu, Los Angeles(CA)")]
     mock_restaurants_df = pd.DataFrame(
         {
             "Name": ["Nobu"],
@@ -189,8 +184,8 @@ def test_get_total_cost_with_restaurant():
 
 
 def test_get_total_cost_with_accommodation():
-    question = _question(people_number=3, days=1)
-    data = [_day(accommodation="Hotel A, Los Angeles(CA)")]
+    question = question_dict(people_number=3, days=1)
+    data = [day_dict(accommodation="Hotel A, Los Angeles(CA)")]
     mock_acc_df = pd.DataFrame(
         {
             "NAME": ["Hotel A"],
@@ -209,8 +204,8 @@ def test_get_total_cost_with_accommodation():
 
 
 def test_get_total_cost_unknown_restaurant_is_zero():
-    question = _question(people_number=2, days=1)
-    data = [_day(breakfast="Unknown Place, Nowhere(ZZ)")]
+    question = question_dict(people_number=2, days=1)
+    data = [day_dict(breakfast="Unknown Place, Nowhere(ZZ)")]
     mock_restaurants_df = pd.DataFrame(
         columns=["Name", "City", "Average Cost", "Cuisines"]
     )
@@ -220,15 +215,15 @@ def test_get_total_cost_unknown_restaurant_is_zero():
 
 
 def test_valid_room_rule_no_constraint():
-    question = _question(house_rule=None)
-    data = [_day()]
+    question = question_dict(house_rule=None)
+    data = [day_dict()]
     result, reason = is_valid_room_rule(question, data)
     assert result is None
 
 
 def test_valid_room_rule_passes():
-    question = _question(house_rule="smoking")  # "No smoking" is forbidden
-    data = [_day(accommodation="Hotel A, Los Angeles(CA)")]
+    question = question_dict(house_rule="smoking")  # "No smoking" is forbidden
+    data = [day_dict(accommodation="Hotel A, Los Angeles(CA)")]
     # Hotel A has no smoking restriction
     mock_acc_df = pd.DataFrame(
         {
@@ -247,8 +242,8 @@ def test_valid_room_rule_passes():
 
 
 def test_valid_room_rule_violated():
-    question = _question(house_rule="smoking")
-    data = [_day(accommodation="Hotel A, Los Angeles(CA)")]
+    question = question_dict(house_rule="smoking")
+    data = [day_dict(accommodation="Hotel A, Los Angeles(CA)")]
     mock_acc_df = pd.DataFrame(
         {
             "NAME": ["Hotel A"],
@@ -267,22 +262,22 @@ def test_valid_room_rule_violated():
 
 
 def test_valid_room_rule_all_dashes():
-    question = _question(house_rule="pets")
-    data = [_day(accommodation="-")]
+    question = question_dict(house_rule="pets")
+    data = [day_dict(accommodation="-")]
     result, reason = is_valid_room_rule(question, data)
     assert result is True
 
 
 def test_valid_cuisine_no_constraint():
-    question = _question(cuisine=None)
-    data = [_day()]
+    question = question_dict(cuisine=None)
+    data = [day_dict()]
     result, reason = is_valid_cuisine(question, data)
     assert result is None
 
 
 def test_valid_cuisine_satisfied():
-    question = _question(org="New York", cuisine=["Italian"])
-    data = [_day(breakfast="Trattoria, Los Angeles(CA)")]
+    question = question_dict(org="New York", cuisine=["Italian"])
+    data = [day_dict(breakfast="Trattoria, Los Angeles(CA)")]
     mock_restaurants_df = pd.DataFrame(
         {
             "Name": ["Trattoria"],
@@ -297,8 +292,8 @@ def test_valid_cuisine_satisfied():
 
 
 def test_valid_cuisine_not_satisfied():
-    question = _question(org="New York", cuisine=["Italian"])
-    data = [_day(breakfast="Sushi Bar, Los Angeles(CA)")]
+    question = question_dict(org="New York", cuisine=["Italian"])
+    data = [day_dict(breakfast="Sushi Bar, Los Angeles(CA)")]
     mock_restaurants_df = pd.DataFrame(
         {
             "Name": ["Sushi Bar"],
@@ -315,8 +310,8 @@ def test_valid_cuisine_not_satisfied():
 
 def test_valid_cuisine_org_city_meals_ignored():
     """Meals eaten in the origin city are excluded from cuisine checks."""
-    question = _question(org="New York", cuisine=["Italian"])
-    data = [_day(breakfast="Trattoria, New York(NY)")]  # in org city → ignored
+    question = question_dict(org="New York", cuisine=["Italian"])
+    data = [day_dict(breakfast="Trattoria, New York(NY)")]  # in org city → ignored
     mock_restaurants_df = pd.DataFrame(
         {
             "Name": ["Trattoria"],
@@ -331,15 +326,15 @@ def test_valid_cuisine_org_city_meals_ignored():
 
 
 def test_valid_room_type_no_constraint():
-    question = _question(room_type=None)
-    data = [_day()]
+    question = question_dict(room_type=None)
+    data = [day_dict()]
     result, reason = is_valid_room_type(question, data)
     assert result is None
 
 
 def test_valid_room_type_private_room_passes():
-    question = _question(room_type="private room")
-    data = [_day(accommodation="Hotel A, Los Angeles(CA)")]
+    question = question_dict(room_type="private room")
+    data = [day_dict(accommodation="Hotel A, Los Angeles(CA)")]
     mock_acc_df = pd.DataFrame(
         {
             "NAME": ["Hotel A"],
@@ -357,8 +352,8 @@ def test_valid_room_type_private_room_passes():
 
 
 def test_valid_room_type_private_room_violated():
-    question = _question(room_type="private room")
-    data = [_day(accommodation="Hotel A, Los Angeles(CA)")]
+    question = question_dict(room_type="private room")
+    data = [day_dict(accommodation="Hotel A, Los Angeles(CA)")]
     mock_acc_df = pd.DataFrame(
         {
             "NAME": ["Hotel A"],
@@ -377,8 +372,8 @@ def test_valid_room_type_private_room_violated():
 
 
 def test_valid_room_type_not_shared_room_passes():
-    question = _question(room_type="not shared room")
-    data = [_day(accommodation="Hotel A, Los Angeles(CA)")]
+    question = question_dict(room_type="not shared room")
+    data = [day_dict(accommodation="Hotel A, Los Angeles(CA)")]
     mock_acc_df = pd.DataFrame(
         {
             "NAME": ["Hotel A"],
@@ -396,8 +391,8 @@ def test_valid_room_type_not_shared_room_passes():
 
 
 def test_valid_room_type_not_shared_room_violated():
-    question = _question(room_type="not shared room")
-    data = [_day(accommodation="Hotel A, Los Angeles(CA)")]
+    question = question_dict(room_type="not shared room")
+    data = [day_dict(accommodation="Hotel A, Los Angeles(CA)")]
     mock_acc_df = pd.DataFrame(
         {
             "NAME": ["Hotel A"],
@@ -415,8 +410,8 @@ def test_valid_room_type_not_shared_room_violated():
 
 
 def test_evaluation_returns_all_check_keys():
-    question = _question()
-    data = [_day()]
+    question = question_dict()
+    data = [day_dict()]
     result = evaluation(question, data)
     assert set(result.keys()) == {
         "valid_transportation",
@@ -428,8 +423,8 @@ def test_evaluation_returns_all_check_keys():
 
 
 def test_evaluation_all_tuples():
-    question = _question()
-    data = [_day()]
+    question = question_dict()
+    data = [day_dict()]
     result = evaluation(question, data)
     for key, value in result.items():
         assert isinstance(value, tuple), f"Expected tuple for {key}"
@@ -438,14 +433,14 @@ def test_evaluation_all_tuples():
 
 def test_evaluation_no_constraints_all_pass():
     """With no local constraints and zero cost, everything should pass."""
-    question = _question(
+    question = question_dict(
         budget=10000,
         transportation=None,
         cuisine=None,
         room_type=None,
         house_rule=None,
     )
-    data = [_day()]  # all dashes = zero cost
+    data = [day_dict()]  # all dashes = zero cost
     result = evaluation(question, data)
     # transportation/cuisine/room_rule/room_type → None (not applicable)
     assert result["valid_transportation"] == (None, None)
@@ -458,8 +453,8 @@ def test_evaluation_no_constraints_all_pass():
 
 def test_evaluation_budget_exceeded():
     """Plan costs more than budget → valid_cost should be False."""
-    question = _question(budget=100, people_number=2)
-    data = [_day(breakfast="Nobu, Los Angeles(CA)")]
+    question = question_dict(budget=100, people_number=2)
+    data = [day_dict(breakfast="Nobu, Los Angeles(CA)")]
     mock_restaurants_df = pd.DataFrame(
         {
             "Name": ["Nobu"],

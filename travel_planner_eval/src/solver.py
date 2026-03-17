@@ -1,7 +1,7 @@
 import json
 import logging
 
-from inspect_ai.agent import Agent, AgentPrompt, AgentState, AgentSubmit, react, run
+from inspect_ai.agent import AgentPrompt, AgentState, AgentSubmit, react, run
 from inspect_ai.model import ChatMessage, ChatMessageTool, ChatMessageUser, get_model
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.tool import Tool, tool
@@ -30,9 +30,6 @@ REFLEXION_MAX_RETRIES: int = 3
 
 # Maximum tool-call steps per agent run,
 MAX_STEPS: int = 30
-
-CONTINUE_MESSAGE = "Please proceed to the next step using your best judgement."
-
 
 @tool
 def cost_enquiry_tool() -> Tool:
@@ -75,7 +72,7 @@ def make_react_agent(system_prompt: str) -> object:
         steps += 1
         if steps >= MAX_STEPS:
             return False
-        return CONTINUE_MESSAGE
+        return True
 
     return react(
         prompt=AgentPrompt(instructions=system_prompt),
@@ -179,7 +176,7 @@ def sole_planning_reflexion() -> Solver:
                 state.sample_id,
                 retry + 1,
                 MAX_STEPS,
-                reflection_text[:100],
+                reflection_text,
             )
 
         return state

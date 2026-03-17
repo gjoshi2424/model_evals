@@ -23,7 +23,6 @@ def travel_planner_dataset(
             "validation" has 180). The test split is not supported
             because it has no ground-truth labels.
         planner_instruction: Prompt template for the sample input.
-            Must contain ``{text}`` and ``{query}`` placeholders.
 
     Returns:
         Inspect Dataset of TravelPlanner samples.
@@ -50,7 +49,6 @@ def record_to_sample(record: dict[str, Any], planner_instruction: str) -> Sample
         Inspect Sample with the formatted planner prompt as input and all
         query constraint fields stored in metadata for the scorer
     """
-    # Parse local_constraint if it came through as a string (happens in some HF splits)
     local_constraint = record["local_constraint"]
     if isinstance(local_constraint, str):
         local_constraint = ast.literal_eval(local_constraint)
@@ -63,10 +61,8 @@ def record_to_sample(record: dict[str, Any], planner_instruction: str) -> Sample
     return Sample(
         input=input_text,
         metadata={
-            # Raw fields needed by react/reflexion solvers
             "reference_information": text,
             "query": query,
-            # Constraint fields needed by the scorer
             "org": record["org"],
             "dest": record["dest"],
             "days": record["days"],

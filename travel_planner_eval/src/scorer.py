@@ -57,8 +57,6 @@ def travel_planner_scorer(
             )
         # Step 1: Parse natural-language plan → structured JSON
         parsing_prompt = FORMAT_CONVERSION_PREFIX + f"Text:\n{plan_text}\nJSON:\n"
-        # get_model(None) returns the current task model; passing a string uses a
-        # separate model. Either way, parsing costs appear in that model's log usage.
         model = get_model(parse_model)
         parse_response = await model.generate(
             input=[
@@ -73,7 +71,7 @@ def travel_planner_scorer(
         if parsed_plan is None:
             logger.warning(
                 f"Sample {state.sample_id}: JSON parsing failed. "
-                f"Parser output: {parse_output[:200]}"
+                f"Parser output: {parse_output}"
             )
             return Score(
                 value=INCORRECT,
@@ -82,12 +80,12 @@ def travel_planner_scorer(
                 metadata={
                     "delivered": True,
                     "parse_failed": True,
-                    "parser_output": parse_output[:500],
+                    "parser_output": parse_output,
                 },
             )
 
         # Step 2: Evaluate constraints.
-        # Hard constraints are only evaluated if the plan is not absent
+        # Hard constraints are only evaluated if needed info is available
         query_data: dict[str, Any] = state.metadata
         commonsense_results = commonsense.evaluation(query_data, parsed_plan)
         not_absent_pass = commonsense_results["is_not_absent"][0]

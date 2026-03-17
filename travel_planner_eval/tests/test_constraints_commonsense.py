@@ -1,6 +1,4 @@
 """Tests for constraints/commonsense.py constraint checkers.
-
-Database calls are patched at the module level so tests run without CSV data files.
 """
 
 from contextlib import contextmanager
@@ -23,7 +21,7 @@ from constraints.commonsense import (
 )
 
 # A minimal city→state mapping used for is_reasonable_visiting_city tests.
-_CITY_STATE = {
+CITY_STATE = {
     "New York": "New York",
     "Los Angeles": "California",
     "San Francisco": "California",
@@ -32,11 +30,11 @@ _CITY_STATE = {
 
 
 @contextmanager
-def _patch_all_databases(city_state=None):
+def patch_all_databases(city_state=None):
     """Patch every database call with empty DataFrames (and optionally city_state_map).
 
     Use this in any test that calls evaluation() or is_valid_information_in_sandbox()
-    without real CSV data, so that all database paths are hermetically isolated.
+    without real CSV data, so that all database paths are isolated.
     """
     empty_restaurants = pd.DataFrame(
         columns=["Name", "City", "Average Cost", "Cuisines"]
@@ -57,7 +55,7 @@ def _patch_all_databases(city_state=None):
         ]
     )
     with (
-        patch("database.city_state_map", return_value=city_state or _CITY_STATE),
+        patch("database.city_state_map", return_value=city_state or CITY_STATE),
         patch("database.flights", return_value=empty_flights),
         patch("database.restaurants", return_value=empty_restaurants),
         patch("database.attractions", return_value=empty_attractions),
@@ -66,7 +64,7 @@ def _patch_all_databases(city_state=None):
         yield
 
 
-def _day(
+def day_dict(
     current_city: str = "Los Angeles",
     transportation: str = "-",
     breakfast: str = "-",
@@ -75,7 +73,7 @@ def _day(
     attraction: str = "-",
     accommodation: str = "-",
 ) -> dict:
-    """Return a minimal per-day plan dict with sensible defaults."""
+    """Return a minimal per-day_dict plan dict with sensible defaults."""
     return {
         "current_city": current_city,
         "transportation": transportation,
@@ -87,7 +85,7 @@ def _day(
     }
 
 
-def _question(
+def question_dict(
     org: str = "New York",
     dest: str = "California",
     days: int = 3,
@@ -106,67 +104,67 @@ def _question(
 
 
 def test_reasonable_visiting_city_valid_round_trip():
-    question = _question(org="New York", dest="California", days=3)
+    question = question_dict(org="New York", dest="California", days=3)
     data = [
-        _day("from New York to Los Angeles"),
-        _day("Los Angeles"),
-        _day("from Los Angeles to New York"),
+        day_dict("from New York to Los Angeles"),
+        day_dict("Los Angeles"),
+        day_dict("from Los Angeles to New York"),
     ]
-    with patch("database.city_state_map", return_value=_CITY_STATE):
+    with patch("database.city_state_map", return_value=CITY_STATE):
         result, reason = is_reasonable_visiting_city(question, data)
     assert result is True
     assert reason is None
 
 
 def test_reasonable_visiting_city_wrong_first_city():
-    question = _question(org="New York", dest="California", days=1)
-    data = [_day("from Chicago to Los Angeles")]
-    with patch("database.city_state_map", return_value=_CITY_STATE):
+    question = question_dict(org="New York", dest="California", days=1)
+    data = [day_dict("from Chicago to Los Angeles")]
+    with patch("database.city_state_map", return_value=CITY_STATE):
         result, reason = is_reasonable_visiting_city(question, data)
     assert result is False
     assert "New York" in reason
 
 
 def test_reasonable_visiting_city_not_closed_circle():
-    question = _question(org="New York", dest="California", days=2)
+    question = question_dict(org="New York", dest="California", days=2)
     data = [
-        _day("from New York to Los Angeles"),
-        _day("Los Angeles"),
+        day_dict("from New York to Los Angeles"),
+        day_dict("Los Angeles"),
     ]
-    with patch("database.city_state_map", return_value=_CITY_STATE):
+    with patch("database.city_state_map", return_value=CITY_STATE):
         result, reason = is_reasonable_visiting_city(question, data)
     assert result is False
     assert "closed circle" in reason
 
 
 def test_reasonable_visiting_city_unknown_city():
-    question = _question(org="New York", dest="California", days=2)
+    question = question_dict(org="New York", dest="California", days=2)
     data = [
-        _day("from New York to Atlantis"),
-        _day("from Atlantis to New York"),
+        day_dict("from New York to Atlantis"),
+        day_dict("from Atlantis to New York"),
     ]
     # Atlantis is not in city_state_map
-    with patch("database.city_state_map", return_value=_CITY_STATE):
+    with patch("database.city_state_map", return_value=CITY_STATE):
         result, reason = is_reasonable_visiting_city(question, data)
     assert result is False
     assert "Atlantis" in reason
 
 
 def test_valid_restaurants_no_repeats():
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day(breakfast="Cafe A, Los Angeles(CA)", lunch="Diner B, Los Angeles(CA)"),
-        _day(breakfast="Cafe C, Los Angeles(CA)", dinner="Diner D, Los Angeles(CA)"),
+        day_dict(breakfast="Cafe A, Los Angeles(CA)", lunch="Diner B, Los Angeles(CA)"),
+        day_dict(breakfast="Cafe C, Los Angeles(CA)", dinner="Diner D, Los Angeles(CA)"),
     ]
     result, reason = is_valid_restaurants(question, data)
     assert result is True
 
 
 def test_valid_restaurants_repeated_breakfast():
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day(breakfast="Cafe A, Los Angeles(CA)"),
-        _day(breakfast="Cafe A, Los Angeles(CA)"),
+        day_dict(breakfast="Cafe A, Los Angeles(CA)"),
+        day_dict(breakfast="Cafe A, Los Angeles(CA)"),
     ]
     result, reason = is_valid_restaurants(question, data)
     assert result is False
@@ -174,37 +172,37 @@ def test_valid_restaurants_repeated_breakfast():
 
 
 def test_valid_restaurants_repeated_lunch():
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day(lunch="Diner B, Los Angeles(CA)"),
-        _day(lunch="Diner B, Los Angeles(CA)"),
+        day_dict(lunch="Diner B, Los Angeles(CA)"),
+        day_dict(lunch="Diner B, Los Angeles(CA)"),
     ]
     result, reason = is_valid_restaurants(question, data)
     assert result is False
 
 
 def test_valid_restaurants_all_dashes():
-    question = _question(days=2)
-    data = [_day(), _day()]
+    question = question_dict(days=2)
+    data = [day_dict(), day_dict()]
     result, reason = is_valid_restaurants(question, data)
     assert result is True
 
 
 def test_valid_attractions_no_repeats():
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day(attraction="Griffith Observatory;"),
-        _day(attraction="Getty Center;"),
+        day_dict(attraction="Griffith Observatory;"),
+        day_dict(attraction="Getty Center;"),
     ]
     result, reason = is_valid_attractions(question, data)
     assert result is True
 
 
 def test_valid_attractions_repeated():
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day(attraction="Griffith Observatory;"),
-        _day(attraction="Griffith Observatory;"),
+        day_dict(attraction="Griffith Observatory;"),
+        day_dict(attraction="Griffith Observatory;"),
     ]
     result, reason = is_valid_attractions(question, data)
     assert result is False
@@ -212,27 +210,27 @@ def test_valid_attractions_repeated():
 
 
 def test_valid_attractions_all_dashes():
-    question = _question(days=2)
-    data = [_day(), _day()]
+    question = question_dict(days=2)
+    data = [day_dict(), day_dict()]
     result, reason = is_valid_attractions(question, data)
     assert result is True
 
 
 def test_valid_transportation_self_driving_only():
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day(transportation="Self-driving from New York to Los Angeles"),
-        _day(transportation="Self-driving from Los Angeles to New York"),
+        day_dict(transportation="Self-driving from New York to Los Angeles"),
+        day_dict(transportation="Self-driving from Los Angeles to New York"),
     ]
     result, reason = is_valid_transportation(question, data)
     assert result is True
 
 
 def test_valid_transportation_flight_and_self_driving_conflict():
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day(transportation="Flight Number: AA100, from New York to Los Angeles"),
-        _day(transportation="Self-driving from Los Angeles to New York"),
+        day_dict(transportation="Flight Number: AA100, from New York to Los Angeles"),
+        day_dict(transportation="Self-driving from Los Angeles to New York"),
     ]
     result, reason = is_valid_transportation(question, data)
     assert result is False
@@ -240,27 +238,27 @@ def test_valid_transportation_flight_and_self_driving_conflict():
 
 
 def test_valid_transportation_taxi_and_self_driving_conflict():
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day(transportation="Taxi from New York to Los Angeles"),
-        _day(transportation="Self-driving from Los Angeles to New York"),
+        day_dict(transportation="Taxi from New York to Los Angeles"),
+        day_dict(transportation="Self-driving from Los Angeles to New York"),
     ]
     result, reason = is_valid_transportation(question, data)
     assert result is False
 
 
 def test_valid_transportation_empty_day1():
-    question = _question(days=2)
-    data = [_day(transportation="-"), _day(transportation="Taxi from A to B")]
+    question = question_dict(days=2)
+    data = [day_dict(transportation="-"), day_dict(transportation="Taxi from A to B")]
     result, reason = is_valid_transportation(question, data)
     assert result is False
     assert "day 1" in reason
 
 
 def test_valid_info_in_current_city_valid():
-    question = _question(days=1)
+    question = question_dict(days=1)
     data = [
-        _day(
+        day_dict(
             current_city="from New York to Los Angeles",
             transportation="Self-driving from New York to Los Angeles",
             breakfast="Nobu, Los Angeles(CA)",
@@ -272,9 +270,9 @@ def test_valid_info_in_current_city_valid():
 
 
 def test_valid_info_in_current_city_wrong_city_breakfast():
-    question = _question(days=1)
+    question = question_dict(days=1)
     data = [
-        _day(
+        day_dict(
             current_city="Los Angeles",
             breakfast="Nobu, Chicago(IL)",  # wrong city
         )
@@ -285,9 +283,9 @@ def test_valid_info_in_current_city_wrong_city_breakfast():
 
 
 def test_valid_info_in_current_city_wrong_accommodation():
-    question = _question(days=1)
+    question = question_dict(days=1)
     data = [
-        _day(
+        day_dict(
             current_city="Los Angeles",
             accommodation="Marriott, Chicago(IL)",  # wrong city
         )
@@ -299,16 +297,16 @@ def test_valid_info_in_current_city_wrong_accommodation():
 
 def test_valid_info_in_sandbox_all_dashes():
     """Plan with all '-' entries should pass without any database lookups."""
-    question = _question(days=2)
-    data = [_day(), _day()]
+    question = question_dict(days=2)
+    data = [day_dict(), day_dict()]
     result, reason = is_valid_information_in_sandbox(question, data)
     assert result is True
 
 
 def test_valid_info_in_sandbox_valid_flight():
-    question = _question(days=1)
+    question = question_dict(days=1)
     data = [
-        _day(
+        day_dict(
             current_city="from New York to Los Angeles",
             transportation="Flight Number: AA100, from New York to Los Angeles",
         )
@@ -327,9 +325,9 @@ def test_valid_info_in_sandbox_valid_flight():
 
 
 def test_valid_info_in_sandbox_invalid_flight():
-    question = _question(days=1)
+    question = question_dict(days=1)
     data = [
-        _day(
+        day_dict(
             current_city="from New York to Los Angeles",
             transportation="Flight Number: ZZ999, from New York to Los Angeles",
         )
@@ -345,8 +343,8 @@ def test_valid_info_in_sandbox_invalid_flight():
 
 
 def test_valid_info_in_sandbox_invalid_restaurant():
-    question = _question(days=1)
-    data = [_day(breakfast="Unknown Place, Los Angeles(CA)")]
+    question = question_dict(days=1)
+    data = [day_dict(breakfast="Unknown Place, Los Angeles(CA)")]
     mock_restaurants_df = pd.DataFrame(
         columns=["Name", "City", "Average Cost", "Cuisines"]
     )
@@ -357,10 +355,10 @@ def test_valid_info_in_sandbox_invalid_restaurant():
 
 
 def test_valid_accommodaton_meets_minimum_nights():
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day(accommodation="Hotel A, Los Angeles(CA)"),
-        _day(accommodation="Hotel A, Los Angeles(CA)"),
+        day_dict(accommodation="Hotel A, Los Angeles(CA)"),
+        day_dict(accommodation="Hotel A, Los Angeles(CA)"),
     ]
     mock_acc_df = pd.DataFrame(
         {
@@ -380,10 +378,10 @@ def test_valid_accommodaton_meets_minimum_nights():
 
 def test_valid_accommodaton_violates_minimum_nights():
     # Only 1 night but minimum is 2
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day(accommodation="Hotel A, Los Angeles(CA)"),
-        _day(accommodation="Hotel B, Los Angeles(CA)"),  # different hotel
+        day_dict(accommodation="Hotel A, Los Angeles(CA)"),
+        day_dict(accommodation="Hotel B, Los Angeles(CA)"),  # different hotel
     ]
     mock_acc_df = pd.DataFrame(
         {
@@ -403,11 +401,11 @@ def test_valid_accommodaton_violates_minimum_nights():
 
 
 def test_valid_visiting_city_number_correct():
-    question = _question(org="New York", days=3, visiting_city_number=1)
+    question = question_dict(org="New York", days=3, visiting_city_number=1)
     data = [
-        _day("from New York to Los Angeles"),
-        _day("Los Angeles"),
-        _day("from Los Angeles to New York"),
+        day_dict("from New York to Los Angeles"),
+        day_dict("Los Angeles"),
+        day_dict("from Los Angeles to New York"),
     ]
     result, reason = is_valid_visiting_city_number(question, data)
     assert result is True
@@ -415,12 +413,12 @@ def test_valid_visiting_city_number_correct():
 
 def test_valid_visiting_city_number_wrong_count():
     # Plan visits 2 cities but constraint says 1
-    question = _question(org="New York", days=4, visiting_city_number=1)
+    question = question_dict(org="New York", days=4, visiting_city_number=1)
     data = [
-        _day("from New York to Los Angeles"),
-        _day("Los Angeles"),
-        _day("from Los Angeles to San Francisco"),
-        _day("from San Francisco to New York"),
+        day_dict("from New York to Los Angeles"),
+        day_dict("Los Angeles"),
+        day_dict("from Los Angeles to San Francisco"),
+        day_dict("from San Francisco to New York"),
     ]
     result, reason = is_valid_visiting_city_number(question, data)
     assert result is False
@@ -428,40 +426,40 @@ def test_valid_visiting_city_number_wrong_count():
 
 
 def test_valid_visiting_city_number_wrong_first_city():
-    question = _question(org="New York", days=1, visiting_city_number=1)
-    data = [_day("from Chicago to Los Angeles")]
+    question = question_dict(org="New York", days=1, visiting_city_number=1)
+    data = [day_dict("from Chicago to Los Angeles")]
     result, reason = is_valid_visiting_city_number(question, data)
     assert result is False
     assert "New York" in reason
 
 
 def test_valid_days_correct():
-    question = _question(days=2)
-    data = [_day("Los Angeles"), _day("Los Angeles")]
+    question = question_dict(days=2)
+    data = [day_dict("Los Angeles"), day_dict("Los Angeles")]
     result, reason = is_valid_days(question, data)
     assert result is True
 
 
 def test_valid_days_too_few():
-    question = _question(days=3)
-    data = [_day("Los Angeles"), _day("Los Angeles")]
+    question = question_dict(days=3)
+    data = [day_dict("Los Angeles"), day_dict("Los Angeles")]
     result, reason = is_valid_days(question, data)
     assert result is False
     assert "3" in reason
 
 
 def test_valid_days_placeholder_row():
-    question = _question(days=2)
+    question = question_dict(days=2)
     data = [
-        _day("Los Angeles"),
-        _day("You don't need to fill in the information for this or later days."),
+        day_dict("Los Angeles"),
+        day_dict("You don't need to fill in the information for this or later days."),
     ]
     result, reason = is_valid_days(question, data)
     assert result is False
 
 
 def test_not_absent_valid_plan():
-    question = _question(org="New York", days=3, visiting_city_number=1)
+    question = question_dict(org="New York", days=3, visiting_city_number=1)
     data = [
         {
             "current_city": "from New York to Los Angeles",
@@ -496,7 +494,7 @@ def test_not_absent_valid_plan():
 
 
 def test_not_absent_missing_transportation_key():
-    question = _question(days=1)
+    question = question_dict(days=1)
     data = [
         {
             "current_city": "Los Angeles",
@@ -514,15 +512,15 @@ def test_not_absent_missing_transportation_key():
 
 
 def test_evaluation_returns_all_check_keys():
-    question = _question(
+    question = question_dict(
         org="New York", dest="California", days=3, visiting_city_number=1
     )
     data = [
-        _day("from New York to Los Angeles"),
-        _day("Los Angeles"),
-        _day("from Los Angeles to New York"),
+        day_dict("from New York to Los Angeles"),
+        day_dict("Los Angeles"),
+        day_dict("from Los Angeles to New York"),
     ]
-    with _patch_all_databases():
+    with patch_all_databases():
         results = evaluation(question, data)
 
     expected_keys = {
@@ -539,11 +537,11 @@ def test_evaluation_returns_all_check_keys():
 
 
 def test_evaluation_returns_tuples():
-    question = _question(
+    question = question_dict(
         org="New York", dest="California", days=1, visiting_city_number=1
     )
-    data = [_day("from New York to Los Angeles")]
-    with _patch_all_databases():
+    data = [day_dict("from New York to Los Angeles")]
+    with patch_all_databases():
         results = evaluation(question, data)
 
     for key, value in results.items():
