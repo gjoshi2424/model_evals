@@ -118,10 +118,9 @@ Accuracy score is based on the common sense macro score. However, the hard const
 
 **Notes:**
 
-- Human expert baseline from the paper is 100% commonsense pass rate and 67.7% final pass rate (all constraints).
 - gpt-3.5-turbo-1106 can be compared against the [leaderboard](https://huggingface.co/spaces/osunlp/TravelPlannerLeaderboard)
 - gemini-3-flash-preview was added for comparing to a later model
-- Sample size was limited due to cost constraints
+- Sample size was limited due to cost constraints. For gpt-3.5 this is likely causing the results to have slightly higher scores than the leader board commensense macro pass rate.
 - In the reflexion agent case, the tool calls rarely failed three times in a row, so the reflection phase rarely triggered. This may be due to using later models.
 
 **Evaluation Commands:**
