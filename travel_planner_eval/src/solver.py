@@ -6,7 +6,7 @@ from inspect_ai.model import ChatMessage, ChatMessageTool, ChatMessageUser, get_
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.tool import Tool, tool
 
-from database import cost_enquiry
+from database import COST_ENQUIRY_ERROR_PREFIX, cost_enquiry
 from prompts import (
     REACT_AGENT_SYSTEM_PROMPT,
     REFLECT_INSTRUCTION,
@@ -28,8 +28,12 @@ def msg_text(m: ChatMessage) -> str:
 # Maximum reflection retries for the Reflexion strategy.
 REFLEXION_MAX_RETRIES: int = 3
 
-# Maximum tool-call steps per agent run,
+# Maximum tool-call steps per agent run.
 MAX_STEPS: int = 30
+
+# Number of consecutive CostEnquiry failures before the react loop exits early
+# and reflexion is triggered.
+COST_ENQUIRY_ERROR_THRESHOLD: int = 3
 
 @tool
 def cost_enquiry_tool() -> Tool:
@@ -80,6 +84,44 @@ def make_react_agent(system_prompt: str) -> object:
         on_continue=on_continue,
         submit=AgentSubmit(keep_in_messages=True),
     )
+
+
+def make_reflexion_react_agent(system_prompt: str) -> tuple[object, list[int]]:
+    """Create a react() agent that tracks consecutive CostEnquiry failures.
+
+    Returns:
+        A tuple of (agent, consecutive_errors) where consecutive_errors[0] holds
+        the running error count. The agent exits early once
+        COST_ENQUIRY_ERROR_THRESHOLD failures occur.
+    """
+    steps = 0
+    consecutive_errors = [0]
+
+    async def on_continue(state: AgentState) -> bool | str:
+        nonlocal steps
+        steps += 1
+        if steps >= MAX_STEPS:
+            return False
+        last = state.messages[-1] if state.messages else None
+        if isinstance(last, ChatMessageTool) and last.function == "cost_enquiry_tool":
+            if last.error is not None or (
+                isinstance(last.content, str)
+                and last.content.startswith(COST_ENQUIRY_ERROR_PREFIX)
+            ):
+                consecutive_errors[0] += 1
+            else:
+                consecutive_errors[0] = 0  # successful call resets the counter
+        if consecutive_errors[0] >= COST_ENQUIRY_ERROR_THRESHOLD:
+            return False
+        return True
+
+    agent = react(
+        prompt=AgentPrompt(instructions=system_prompt),
+        tools=[cost_enquiry_tool()],
+        on_continue=on_continue,
+        submit=AgentSubmit(keep_in_messages=True),
+    )
+    return agent, consecutive_errors
 
 
 @solver
@@ -138,20 +180,13 @@ def sole_planning_reflexion() -> Solver:
             else:
                 system_prompt = REACT_AGENT_SYSTEM_PROMPT
 
-            agent = make_react_agent(system_prompt)
+            agent, error_counter = make_reflexion_react_agent(system_prompt)
             agent_state = await run(agent, user_input)
             state.output = agent_state.output
 
-            # Check whether the agent actually called submit() successfully.
-            submitted = any(
-                isinstance(m, ChatMessageTool)
-                and m.function == "submit"
-                and m.error is None
-                for m in agent_state.messages
-            )
-            if submitted:
+            if error_counter[0] < COST_ENQUIRY_ERROR_THRESHOLD:
                 logger.debug(
-                    "Sample %s: Reflexion finished on attempt %d.",
+                    "Sample %s: Reflexion finished on attempt %d (threshold not reached).",
                     state.sample_id,
                     retry + 1,
                 )
@@ -172,10 +207,11 @@ def sole_planning_reflexion() -> Solver:
             reflection_text = reflection_output.completion.strip()
             reflections.append(reflection_text)
             logger.info(
-                "Sample %s: Reflexion retry %d/%d. Reflection: %s",
+                "Sample %s: Reflexion retry %d/%d (%d CostEnquiry errors). Reflection: %s",
                 state.sample_id,
                 retry + 1,
-                MAX_STEPS,
+                REFLEXION_MAX_RETRIES,
+                error_counter[0],
                 reflection_text,
             )
 

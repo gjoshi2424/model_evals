@@ -9,6 +9,7 @@ import re as _re
 
 _DB_DIR: Path = Path(__file__).parent / "database"
 
+COST_ENQUIRY_ERROR_PREFIX = "Sorry, the cost of your plan is not available because of the following reasons:"
 
 @functools.lru_cache(maxsize=1)
 def flights() -> pd.DataFrame:
@@ -241,7 +242,8 @@ def cost_enquiry(plan: dict) -> str:
 
     if not errors:
         return f"The cost of your plan is {total_cost} dollars."
-    msg = "Sorry, the cost of your plan is not available because of the following reasons:"
+    msg = COST_ENQUIRY_ERROR_PREFIX
     for idx, info in enumerate(errors, 1):
         msg += f"{idx}. {info} \t"
     return msg
+
