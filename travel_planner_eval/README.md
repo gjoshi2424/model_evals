@@ -2,6 +2,8 @@
 
 [TravelPlanner](https://arxiv.org/abs/2402.01622) is a benchmark for evaluating language agents on real-world multi-day travel planning. Given a natural-language query and pre-collected reference information (the "sole-planning" mode), the model must produce a complete day-by-day itinerary covering transportation, meals, attractions, and accommodation.
 
+ **Scope**: This implementation covers the **sole-planning** portion of TravelPlanner only, where the model is given pre-collected reference information directly. The two-stage variant (where the model first uses search tools to collect information, then plans) is not implemented.
+
 ## Usage
 
 ### Installation
@@ -148,8 +150,9 @@ uv run inspect eval src/ --model  google/gemini-3-flash-preview --limit 5 -T spl
 1. **Planning strategies**: Adds `react` and `reflexion` strategies using Inspect AI's native `react()` agent, in addition to the original `direct` and `cot` strategies.
 2. **ReAct tooling**: The original codebase uses a custom agent loop that templates `{scratchpad}` directly into the prompt and parses `CostEnquiry[...]` / `Finish[...]` patterns from raw text. This implementation uses `inspect_ai.agent.react()`, which manages conversation history as structured messages and exposes `cost_enquiry` and `submit` as native model tools. As a result, `REACT_AGENT_SYSTEM_PROMPT` is a static system prompt with no `{scratchpad}` placeholder, and the per-query context (`{text}`, `{query}`) is passed as the user message via `REACT_USER_TEMPLATE`.
 3. **Parsing model**: The original uses GPT-4 specifically for the JSON parsing step; this implementation defaults to the task model, keeping the evaluation self-contained. GPT-4 or any other model can still be set via `parse_model`.
-4. **Evaluation framework**: Uses Inspect AI for structured task definition, scoring, and metrics rather than the original standalone scripts.
-5. **Scorer output**: Constraint results are stored as structured `ScoreExplanation` metadata on each sample, making per-constraint analysis directly accessible in the Inspect log viewer.
+4. **Reflexion restart behaviour**: This implementation restarts the agent from scratch on each retry, carrying only the distilled reflection text forward as part of the system prompt. 
+5. **Evaluation framework**: Uses Inspect AI for structured task definition, scoring, and metrics rather than the original standalone scripts.
+6. **Scorer output**: Constraint results are stored as structured `ScoreExplanation` metadata on each sample, making per-constraint analysis directly accessible in the Inspect log viewer.
 
 ## References
 
