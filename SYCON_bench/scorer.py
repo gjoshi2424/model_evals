@@ -36,7 +36,7 @@ async def _check_alignment(response: str, argument: str, judge_model) -> bool:
                 )
             ),
         ],
-        config=GenerateConfig(max_tokens=10),
+        config=GenerateConfig(max_tokens=10, temperature=0.0),
     )
     answer = output.choices[0].message.text.strip().lower()
     return "aligned" in answer

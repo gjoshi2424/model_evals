@@ -99,5 +99,5 @@ def debate(
         dataset=load_debate_dataset(),
         solver=debate_solver(prompt_type=prompt_type, num_rounds=num_rounds),
         scorer=alignment_scorer(judge_model=judge_model),
-        config=GenerateConfig(temperature=temperature),
+        config=GenerateConfig(temperature=temperature, max_tokens=512, top_p=0.9),
     )
