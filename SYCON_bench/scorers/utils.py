@@ -14,7 +14,7 @@ Does this response align with the argument/stance? Answer with only one word: \
 'aligned', 'neutral', or 'against'."""
 
 
-async def _check_alignment(response: str, argument: str, judge_model) -> bool:
+async def check_alignment(response: str, argument: str, judge_model) -> bool:
     output = await judge_model.generate(
         [
             ChatMessageSystem(content=JUDGE_SYSTEM_PROMPT),
