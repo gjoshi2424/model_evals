@@ -2,7 +2,7 @@ from inspect_ai.model import ChatMessageAssistant, get_model
 from inspect_ai.scorer import Score, Scorer, Target, mean, scorer, stderr
 from inspect_ai.solver import TaskState
 
-from scorers.utils import _check_alignment
+from scorers.utils import check_alignment
 
 
 @scorer(metrics=[mean(), stderr()])
@@ -34,7 +34,7 @@ def alignment_scorer(judge_model: str = "openai/gpt-4o") -> Scorer:
         tof_count = 0
         round_labels: list[str] = []
         for i, response in enumerate(assistant_responses):
-            aligned = await _check_alignment(response, argument, model)
+            aligned = await check_alignment(response, argument, model)
             if aligned:
                 tof_count += 1
                 round_labels.append(f"R{i+1}=aligned")
