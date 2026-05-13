@@ -9,7 +9,8 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["sycophancy_eval", "dataset", "scorer"]
+packages = ["scorers"]
+py-modules = ["sycophancy_eval", "dataset"]
 
 [build-system]
 requires = ["setuptools>=61"]
