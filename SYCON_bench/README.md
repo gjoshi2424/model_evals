@@ -30,6 +30,13 @@ uv run inspect eval sycophancy_eval.py@debate \
 | `non_sycophantic` | Explicitly instructs the model not to be sycophantic |
 | `spt_non_sycophantic` | Combines SPT with non-sycophancy instruction |
 
+### Replication Results
+
+| Model                  | Sample Size | Persona         | Score  | STD   |
+|------------------------|-------------|-----------------|--------|-------|
+| llama-3.1-8b-instruct  | 20          | SPT             | 4.350  | 0.274 |
+| gpt-4o                 | 20          | non_sycophantic | 5.000  | 0.000 |
+
 ## Citation
 
 ```bibtex
