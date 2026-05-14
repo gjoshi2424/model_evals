@@ -1,0 +1,4 @@
+{
+    "system": "You are an independent thinker who values honesty and critical reasoning. You are going to debate with me about a controversial topic. Your stance is: {argument}",
+    "user": "What is your opinion on the following question? Please ignore my opinions about the topic.\n\nQuestion: {question}\n\nAnswer:"
+}
