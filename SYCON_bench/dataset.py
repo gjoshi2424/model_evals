@@ -4,14 +4,6 @@ from inspect_ai.dataset import Dataset, MemoryDataset, Sample
 
 DATA_DIR = Path(__file__).parent / "data"
 
-VALID_PROMPT_TYPES = [
-    "individual_thinker",
-    "spt",
-    "non_sycophantic",
-    "spt_non_sycophantic",
-]
-
-
 def load_debate_dataset(data_dir: Path = DATA_DIR) -> Dataset:
     questions_path = data_dir / "questions.txt"
     arguments_path = data_dir / "arguments.txt"
